@@ -158,13 +158,19 @@ class LocalGoalStorage {
     if (board) {
       // For daily boards, handle task migration
       if (timeframe === 'daily') {
+        console.log('Updating daily board date to:', newDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
         const targetDate = new Date(newDate);
         targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
         
+        console.log('Today:', today, 'Target:', targetDate);
+        console.log('Is future?', targetDate.getTime() > today.getTime());
+        
         const isMovingToToday = targetDate.getTime() === today.getTime();
         const isFutureDate = targetDate.getTime() > today.getTime();
+        
+        console.log('Tasks before filtering:', board.tasks.length);
         
         // Filter tasks based on the target date
         if (isMovingToToday) {
@@ -184,6 +190,7 @@ class LocalGoalStorage {
           });
         } else if (isFutureDate) {
           // When viewing future dates, only show incomplete tasks
+          console.log('Filtering for future date - hiding completed tasks');
           board.tasks = board.tasks.filter(task => !task.completed);
         } else {
           // When viewing a specific past/future date, show:
@@ -203,6 +210,8 @@ class LocalGoalStorage {
             return false;
           });
         }
+        
+        console.log('Tasks after filtering:', board.tasks.length);
       }
       
       board.currentDate = newDate;
