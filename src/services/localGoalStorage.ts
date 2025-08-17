@@ -159,8 +159,12 @@ class LocalGoalStorage {
       // For daily boards, handle task migration
       if (timeframe === 'daily') {
         const today = new Date();
-        const isMovingToToday = newDate.toDateString() === today.toDateString();
-        const isFutureDate = newDate > today;
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+        const targetDate = new Date(newDate);
+        targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+        
+        const isMovingToToday = targetDate.getTime() === today.getTime();
+        const isFutureDate = targetDate.getTime() > today.getTime();
         
         // Filter tasks based on the target date
         if (isMovingToToday) {
@@ -171,8 +175,12 @@ class LocalGoalStorage {
               return true; // Show all incomplete tasks
             }
             // For completed tasks, only show if completed today
-            return task.completedDate && 
-                   task.completedDate.toDateString() === today.toDateString();
+            if (task.completedDate) {
+              const completedDate = new Date(task.completedDate);
+              completedDate.setHours(0, 0, 0, 0);
+              return completedDate.getTime() === today.getTime();
+            }
+            return false;
           });
         } else if (isFutureDate) {
           // When viewing future dates, only show incomplete tasks
@@ -183,10 +191,14 @@ class LocalGoalStorage {
           // 2. Incomplete tasks that were created on or before that date
           board.tasks = board.tasks.filter(task => {
             if (task.completed && task.completedDate) {
-              return task.completedDate.toDateString() === newDate.toDateString();
+              const completedDate = new Date(task.completedDate);
+              completedDate.setHours(0, 0, 0, 0);
+              return completedDate.getTime() === targetDate.getTime();
             }
             if (!task.completed && task.createdDate) {
-              return task.createdDate <= newDate;
+              const createdDate = new Date(task.createdDate);
+              createdDate.setHours(0, 0, 0, 0);
+              return createdDate.getTime() <= targetDate.getTime();
             }
             return false;
           });

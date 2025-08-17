@@ -205,8 +205,12 @@ class SupabaseGoalStorage {
     // For daily boards, handle task migration
     if (timeframe === 'daily') {
       const today = new Date();
-      const isMovingToToday = newDate.toDateString() === today.toDateString();
-      const isFutureDate = newDate > today;
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+      const targetDate = new Date(newDate);
+      targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+      
+      const isMovingToToday = targetDate.getTime() === today.getTime();
+      const isFutureDate = targetDate.getTime() > today.getTime();
       
       if (isMovingToToday) {
         // When navigating to "today", only show incomplete tasks
