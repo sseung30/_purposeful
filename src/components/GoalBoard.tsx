@@ -36,14 +36,50 @@ export const GoalBoard: React.FC<GoalBoardProps> = ({
     })
   );
 
+  // Filter tasks based on date for daily boards
+  const getFilteredTasks = () => {
+    if (board.timeframe !== 'daily' || !board.currentDate) {
+      return board.tasks;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentDate = new Date(board.currentDate);
+    currentDate.setHours(0, 0, 0, 0);
+
+    const isToday = currentDate.getTime() === today.getTime();
+    const isFuture = currentDate.getTime() > today.getTime();
+
+    if (isFuture) {
+      // For future dates, only show incomplete tasks
+      return board.tasks.filter(task => !task.completed);
+    } else if (isToday) {
+      // For today, show all tasks
+      return board.tasks;
+    } else {
+      // For past dates, show tasks completed on that date + incomplete tasks
+      return board.tasks.filter(task => {
+        if (!task.completed) return true;
+        if (task.completedDate) {
+          const completedDate = new Date(task.completedDate);
+          completedDate.setHours(0, 0, 0, 0);
+          return completedDate.getTime() === currentDate.getTime();
+        }
+        return false;
+      });
+    }
+  };
+
+  const filteredTasks = getFilteredTasks();
+
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
     if (active.id !== over.id) {
-      const oldIndex = board.tasks.findIndex(task => task.id === active.id);
-      const newIndex = board.tasks.findIndex(task => task.id === over.id);
+      const oldIndex = filteredTasks.findIndex(task => task.id === active.id);
+      const newIndex = filteredTasks.findIndex(task => task.id === over.id);
       
-      const reorderedTasks = arrayMove(board.tasks, oldIndex, newIndex).map((task, index) => ({
+      const reorderedTasks = arrayMove(filteredTasks, oldIndex, newIndex).map((task, index) => ({
         ...task,
         order: index
       }));
@@ -60,8 +96,8 @@ export const GoalBoard: React.FC<GoalBoardProps> = ({
     }
   };
 
-  const completedCount = board.tasks.filter(task => task.completed).length;
-  const totalCount = board.tasks.length;
+  const completedCount = filteredTasks.filter(task => task.completed).length;
+  const totalCount = filteredTasks.length;
 
   const handlePreviousDate = () => {
     if (board.timeframe === 'lifelong') return;
@@ -142,9 +178,9 @@ export const GoalBoard: React.FC<GoalBoardProps> = ({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={board.tasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={filteredTasks.map(task => task.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2 mb-4">
-              {board.tasks
+              {filteredTasks
                 .sort((a, b) => {
                   // Completed tasks go to bottom
                   if (a.completed && !b.completed) return 1;
