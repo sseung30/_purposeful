@@ -206,6 +206,7 @@ class SupabaseGoalStorage {
     if (timeframe === 'daily') {
       const today = new Date();
       const isMovingToToday = newDate.toDateString() === today.toDateString();
+      const isFutureDate = newDate > today;
       
       if (isMovingToToday) {
         // When navigating to "today", only show incomplete tasks
@@ -227,6 +228,25 @@ class SupabaseGoalStorage {
             
             if (error) {
               console.error('Error removing completed tasks:', error);
+            }
+          }
+        }
+      } else if (isFutureDate) {
+        // When navigating to future dates, hide all completed tasks
+        const board = await this.getBoardByTimeframe(timeframe);
+        if (board) {
+          const completedTaskIds = board.tasks
+            .filter(task => task.completed)
+            .map(task => task.id);
+          
+          if (completedTaskIds.length > 0) {
+            const { error } = await supabase
+              .from('tasks')
+              .delete()
+              .in('id', completedTaskIds);
+            
+            if (error) {
+              console.error('Error removing completed tasks for future date:', error);
             }
           }
         }

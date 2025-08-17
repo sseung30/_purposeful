@@ -160,6 +160,7 @@ class LocalGoalStorage {
       if (timeframe === 'daily') {
         const today = new Date();
         const isMovingToToday = newDate.toDateString() === today.toDateString();
+        const isFutureDate = newDate > today;
         
         // Filter tasks based on the target date
         if (isMovingToToday) {
@@ -173,6 +174,9 @@ class LocalGoalStorage {
             return task.completedDate && 
                    task.completedDate.toDateString() === today.toDateString();
           });
+        } else if (isFutureDate) {
+          // When viewing future dates, only show incomplete tasks
+          board.tasks = board.tasks.filter(task => !task.completed);
         } else {
           // When viewing a specific past/future date, show:
           // 1. Tasks completed on that specific date
