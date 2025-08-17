@@ -2,7 +2,6 @@ import React from 'react';
 import { Target, Calendar, TrendingUp, LogOut, Cloud, HardDrive, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { ExportButton } from './ExportButton';
 
 interface HeaderProps {
   user?: SupabaseUser | null;
@@ -47,9 +46,6 @@ export const Header: React.FC<HeaderProps> = ({ user, isCloudMode = false, onTog
             <TrendingUp className="w-4 h-4 text-green-600" />
             <span>Keep going!</span>
           </div>
-          
-          {/* Export Button */}
-          <ExportButton />
           
           {/* Storage Mode Toggle */}
           {onToggleMode && (
