@@ -14,20 +14,6 @@ class SupabaseGoalStorage {
         tasks (*)
       `)
       .eq('user_id', user.user.id)
-      targetDate.setHours(0, 0, 0, 0);
-      
-      return board.tasks.filter(task => {
-        if (task.createdDate) {
-          const createdDate = new Date(task.createdDate);
-          createdDate.setHours(0, 0, 0, 0);
-          return createdDate.getTime() === targetDate.getTime();
-        }
-        return false;
-      });
-    }
-    
-    // For other timeframes, show all tasks (they don't have date navigation yet)
-    return board.tasks;
       .order('timeframe');
 
     if (error) {
@@ -215,7 +201,10 @@ class SupabaseGoalStorage {
     }
   }
 
+  async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     // For daily boards, handle task migration
+    if (timeframe === 'daily') {
+      const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       const targetDate = new Date(newDate);
       targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
