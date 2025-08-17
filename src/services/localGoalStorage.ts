@@ -201,10 +201,12 @@ class SupabaseGoalStorage {
     }
   }
 
+  async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     // For daily boards, handle task migration
-      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-      const targetDate = new Date(newDate);
-      targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    const targetDate = new Date(newDate);
+    targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
     let newTitle: string;
     if (timeframe === 'daily') {
       newTitle = newDate.toLocaleDateString('en-US', { 
