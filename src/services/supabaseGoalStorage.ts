@@ -117,7 +117,7 @@ class SupabaseGoalStorage {
     };
   }
 
-  async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
+async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
     const { data: currentTask } = await supabase
       .from('tasks')
       .select('completed')
@@ -125,10 +125,12 @@ class SupabaseGoalStorage {
       .single();
 
     if (currentTask) {
+      const isNowCompleted = !currentTask.completed;
       const { error } = await supabase
         .from('tasks')
-        .update({ 
-          completed: !currentTask.completed,
+        .update({
+          completed: isNowCompleted,
+          completed_at: isNowCompleted ? new Date().toISOString() : null, // 이 로직을 수정/추가하세요
           updated_at: new Date().toISOString()
         })
         .eq('id', taskId);
