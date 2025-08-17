@@ -230,6 +230,7 @@ class SupabaseGoalStorage {
           
           if (updateError) {
             console.error('Error migrating incomplete tasks:', updateError);
+          }
           // Future dates: Only show tasks created specifically for this date
           // This is handled by the filtering logic in getAllBoards
           // Remove completed tasks that weren't completed today

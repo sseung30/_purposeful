@@ -187,6 +187,8 @@ class LocalGoalStorage {
               return completedDate.getTime() === today.getTime();
             }
             return false;
+          }
+          )
           // Future dates: Only show tasks created specifically for this date
           board.tasks = board.tasks.filter(task => {
             if (task.createdDate) {
