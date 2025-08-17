@@ -201,81 +201,12 @@ class SupabaseGoalStorage {
     }
   }
 
-  async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     // For daily boards, handle task migration
-    if (timeframe === 'daily') {
-      const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       const targetDate = new Date(newDate);
       targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-      
-      const isMovingToToday = targetDate.getTime() === today.getTime();
-      const isFutureDate = targetDate.getTime() > today.getTime();
-      const isPastDate = targetDate.getTime() < today.getTime();
-      
-      if (isMovingToToday) {
-        // When viewing "today", show all incomplete tasks (they migrate to today)
-        // and tasks completed today
-        const board = await this.getBoardByTimeframe(timeframe);
-        if (board) {
-          // Update incomplete tasks to migrate to today
-          const { error: updateError } = await supabase
-            .from('tasks')
-            .update({ 
-              created_at: today.toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('board_id', board.id)
-            .eq('completed', false);
-          
-          if (updateError) {
-            console.error('Error migrating incomplete tasks:', updateError);
-          }
-          // Future dates: Only show tasks created specifically for this date
-          // This is handled by the filtering logic in getAllBoards
-          // Remove completed tasks that weren't completed today
-          const { error: deleteError } = await supabase
-            .from('tasks')
-            .delete()
-            .eq('board_id', board.id)
-            .eq('completed', true)
-            .not('updated_at', 'gte', today.toISOString())
-            .not('updated_at', 'lt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString());
-          
-          if (deleteError) {
-            console.error('Error removing old completed tasks:', deleteError);
-          }
-        }
-      } else if (isFutureDate) {
-        // When viewing future dates, show no tasks (empty board)
-        const board = await this.getBoardByTimeframe(timeframe);
-        if (board) {
-          // Remove all tasks for future dates
-          const { error } = await supabase
-            .from('tasks')
-            .delete()
-            .eq('board_id', board.id);
-          
-          if (error) {
-            console.error('Error clearing tasks for future date:', error);
-          }
-        }
-      } else if (isPastDate) {
-        // When viewing past dates, only show tasks completed on that specific date
-        const board = await this.getBoardByTimeframe(timeframe);
-        if (board) {
-          // Remove all tasks except those completed on the target date
-          const { error } = await supabase
-            .from('tasks')
-            .delete()
-            .eq('board_id', board.id)
-            .or(`completed.eq.false,and(completed.eq.true,not(updated_at.gte.${targetDate.toISOString()},updated_at.lt.${new Date(targetDate.getTime() + 24 * 60 * 60 * 1000).toISOString()}))`);
-          
-          if (error) {
-            console.error('Error filtering tasks for past date:', error);
-          }
-        }
-      }
+      // The filtering will be handled in getAllBoards method
+      // No need to modify tasks here, just update the board title
     }
     
     let newTitle: string;

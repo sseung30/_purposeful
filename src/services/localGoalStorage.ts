@@ -161,59 +161,19 @@ class LocalGoalStorage {
     if (board) {
       // For daily boards, handle task migration
       if (timeframe === 'daily') {
-        const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-        const targetDate = new Date(newDate);
-        targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
         
         const isMovingToToday = targetDate.getTime() === today.getTime();
         const isFutureDate = targetDate.getTime() > today.getTime();
-        const isPastDate = targetDate.getTime() < today.getTime();
-        
-        if (isMovingToToday) {
-          // When viewing "today", show:
-          // 1. All incomplete tasks (they migrate to today)
-          // 2. Tasks completed today
-          board.tasks = board.tasks.filter(task => {
-            if (!task.completed) {
-              // Update incomplete tasks to have today as their created date (migration)
-              task.createdDate = today;
-              return true;
-            }
-            // For completed tasks, only show if completed today
-            if (task.completedDate) {
-              const completedDate = new Date(task.completedDate);
-              completedDate.setHours(0, 0, 0, 0);
-              return completedDate.getTime() === today.getTime();
-            }
-            return false;
+        // Filter tasks to only show those created on the target date
+        board.tasks = board.tasks.filter(task => {
+          if (task.createdDate) {
+            const createdDate = new Date(task.createdDate);
+            createdDate.setHours(0, 0, 0, 0);
+            return createdDate.getTime() === targetDate.getTime();
           }
-          )
-          // Future dates: Only show tasks created specifically for this date
-          board.tasks = board.tasks.filter(task => {
-            if (task.createdDate) {
-              const createdDate = new Date(task.createdDate);
-              createdDate.setHours(0, 0, 0, 0);
-              return createdDate.getTime() === targetDate.getTime();
-            }
-            return false;
-          });
-          // When viewing future dates, show no tasks (empty board)
-          board.tasks = [];
-        } else if (isPastDate) {
-          // When viewing past dates, show tasks completed on that specific date
-          board.tasks = board.tasks.filter(task => {
-            if (task.completed && task.completedDate) {
-              const completedDate = new Date(task.completedDate);
-              completedDate.setHours(0, 0, 0, 0);
-              return completedDate.getTime() === targetDate.getTime();
-            }
-            return false;
-          });
-        } else {
-          // Fallback case
-          board.tasks = [];
-        }
+          return false;
+        });
       }
       
       board.currentDate = newDate;
