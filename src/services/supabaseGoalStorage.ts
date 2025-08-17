@@ -205,10 +205,6 @@ class SupabaseGoalStorage {
       today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       const targetDate = new Date(newDate);
       targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-      // The filtering will be handled in getAllBoards method
-      // No need to modify tasks here, just update the board title
-    }
-    
     let newTitle: string;
     if (timeframe === 'daily') {
       newTitle = newDate.toLocaleDateString('en-US', { 
