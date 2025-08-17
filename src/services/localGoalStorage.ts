@@ -13,7 +13,19 @@ class SupabaseGoalStorage {
         *,
         tasks (*)
       `)
-      .eq('user_id', user.user.id)
+      .eq('user_id', user.user.id);
+
+    if (error) {
+      console.error('Error fetching boards:', error);
+      return [];
+    }
+
+    return boardsData.map(board => ({
+      id: board.id,
+      timeframe: board.timeframe,
+      title: board.title,
+      currentDate: new Date(),
+      tasks: board.tasks.map((task: any) => ({
           id: task.id,
           text: task.text,
           completed: task.completed,
@@ -187,7 +199,10 @@ class SupabaseGoalStorage {
     }
   }
 
+  async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     // For daily boards, handle task migration
+    if (timeframe === 'daily') {
+      const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       const targetDate = new Date(newDate);
       targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
