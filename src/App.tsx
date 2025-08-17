@@ -1,57 +1,73 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AuthWrapper } from './components/AuthWrapper';
 import { AuthModal } from './components/AuthModal';
 import { Header } from './components/Header';
 import { GoalBoard } from './components/GoalBoard';
 import { useSupabaseGoals } from './hooks/useSupabaseGoals';
 import { useLocalGoals } from './hooks/useLocalGoals';
-import { GoalBoard as GoalBoardType } from './types/Goal';
+import { GoalBoard as GoalBoardType, Task } from './types/Goal';
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { GoalBoard as GoalBoardType, Task } from './types/Goal'; // Task 타입을 import 합니다.
 
-
-// 날짜 비교를 위한 헬퍼 함수
+/**
+ * 두 날짜가 연, 월, 일이 모두 같은지 비교하는 헬퍼 함수
+ * @param date1 비교할 첫 번째 날짜
+ * @param date2 비교할 두 번째 날짜
+ * @returns 두 날짜가 같으면 true, 다르면 false
+ */
 const isSameDay = (date1: Date, date2: Date): boolean => {
+  // 유효하지 않은 날짜 객체에 대한 방어 코드
+  if (!date1 || !date2) return false;
   return date1.getFullYear() === date2.getFullYear() &&
          date1.getMonth() === date2.getMonth() &&
          date1.getDate() === date2.getDate();
 };
 
-// Daily Board의 Task를 필터링하는 함수
-const filterDailyTasks = (board: GoalBoardType | undefined, today: Date): Task[] => {
+/**
+ * '일일 목표' 보드에 표시될 태스크를 동적으로 필터링하는 함수
+ * @param board 필터링할 '일일 목표' 보드 객체
+ * @param allTasks 모든 '일일 목표' 태스크 배열
+ * @param today 현재 '오늘' 날짜
+ * @returns 필터링된 태스크 배열
+ */
+const filterDailyTasks = (board: GoalBoardType | undefined, allTasks: Task[], today: Date): Task[] => {
     if (!board) return [];
 
-    const viewingDate = board.currentDate || new Date();
-    today.setHours(0, 0, 0, 0);
+    const viewingDate = board.currentDate ? new Date(board.currentDate) : new Date();
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
     viewingDate.setHours(0, 0, 0, 0);
 
-    // 1. 오늘 날짜를 보고 있을 때
-    if (isSameDay(viewingDate, today)) {
-        return board.tasks.filter(task => {
+    // 1. '오늘' 날짜를 보고 있을 때
+    // 오늘 할 일 + 이전에 완료하지 못한 모든 태스크 표시
+    if (isSameDay(viewingDate, todayDate)) {
+        return allTasks.filter(task => {
             const taskCreationDate = task.createdDate ? new Date(task.createdDate) : new Date(0);
             taskCreationDate.setHours(0, 0, 0, 0);
-            // 완료되지 않았거나, 오늘 생성된 태스크
-            return !task.completed || isSameDay(taskCreationDate, today);
+            // 완료되지 않았고, (오늘 또는 이전에 생성된) 태스크
+            return !task.completed && taskCreationDate <= todayDate;
         });
     }
 
-    // 2. 과거 날짜를 보고 있을 때
-    if (viewingDate < today) {
-        return board.tasks.filter(task => {
+    // 2. '과거' 날짜를 보고 있을 때
+    // 해당 날짜에 '완료'된 태스크만 표시
+    if (viewingDate < todayDate) {
+        return allTasks.filter(task => {
             return task.completed && task.completedDate && isSameDay(new Date(task.completedDate), viewingDate);
         });
     }
 
-    // 3. 미래 날짜를 보고 있을 때
-    if (viewingDate > today) {
-        return board.tasks.filter(task => {
+    // 3. '미래' 날짜를 보고 있을 때
+    // 해당 날짜에 '생성'될 태스크만 표시 (미완료 상태)
+    if (viewingDate > todayDate) {
+        return allTasks.filter(task => {
             const taskCreationDate = task.createdDate ? new Date(task.createdDate) : new Date(0);
-            return isSameDay(taskCreationDate, viewingDate);
+            taskCreationDate.setHours(0, 0, 0, 0);
+            return isSameDay(taskCreationDate, viewingDate) && !task.completed;
         });
     }
 
-    return board.tasks;
+    // 기본적으로 모든 태스크 반환
+    return allTasks;
 };
 
 
@@ -68,7 +84,7 @@ function App() {
   return (
     <AuthWrapper>
       {(user) => {
-        // Auto-switch to cloud storage when user is logged in
+        // 사용자가 로그인하면 자동으로 클라우드 저장소로 전환
         const isCloudMode = user && useCloudStorage;
         const goals = isCloudMode ? cloudGoals : localGoals;
 
@@ -102,6 +118,13 @@ function App() {
         const quarterlyBoard = goals.getBoardByTimeframe('quarterly');
         const yearlyBoard = goals.getBoardByTimeframe('yearly');
         const lifelongBoard = goals.getBoardByTimeframe('lifelong');
+
+        // --- 새로운 필터링 로직 적용 ---
+        const today = new Date();
+        const allDailyTasks = dailyBoard ? dailyBoard.tasks : [];
+        const filteredDailyTasks = filterDailyTasks(dailyBoard, allDailyTasks, today);
+        const displayDailyBoard = dailyBoard ? { ...dailyBoard, tasks: filteredDailyTasks } : undefined;
+        // --- 로직 적용 끝 ---
 
         const handleAddTask = (timeframe: GoalBoardType['timeframe']) => (taskText: string) => {
           goals.addTask(timeframe, taskText);
@@ -137,11 +160,11 @@ function App() {
             
             <main className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
-                {/* Daily Goals - 25% */}
+                {/* Daily Goals - 필터링된 보드 사용 */}
                 <div className="lg:col-span-1">
-                  {dailyBoard && (
+                  {displayDailyBoard && (
                     <GoalBoard
-                      board={dailyBoard}
+                      board={displayDailyBoard}
                       onUpdateTaskOrder={handleUpdateTaskOrder('daily')}
                       onToggleTaskCompletion={handleToggleTaskCompletion('daily')}
                       onDeleteTask={handleDeleteTask('daily')}
@@ -153,7 +176,7 @@ function App() {
                   )}
                 </div>
 
-                {/* Weekly Goals - 25% */}
+                {/* Weekly Goals */}
                 <div className="lg:col-span-1">
                   {weeklyBoard && (
                     <GoalBoard
@@ -169,7 +192,7 @@ function App() {
                   )}
                 </div>
 
-                {/* Long-term Goals - 50% in 2x2 grid */}
+                {/* Long-term Goals */}
                 <div className="lg:col-span-2">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                     {/* Monthly Goals */}
