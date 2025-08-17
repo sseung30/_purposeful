@@ -8,6 +8,52 @@ import { useLocalGoals } from './hooks/useLocalGoals';
 import { GoalBoard as GoalBoardType } from './types/Goal';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { GoalBoard as GoalBoardType, Task } from './types/Goal'; // Task 타입을 import 합니다.
+
+
+// 날짜 비교를 위한 헬퍼 함수
+const isSameDay = (date1: Date, date2: Date): boolean => {
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+};
+
+// Daily Board의 Task를 필터링하는 함수
+const filterDailyTasks = (board: GoalBoardType | undefined, today: Date): Task[] => {
+    if (!board) return [];
+
+    const viewingDate = board.currentDate || new Date();
+    today.setHours(0, 0, 0, 0);
+    viewingDate.setHours(0, 0, 0, 0);
+
+    // 1. 오늘 날짜를 보고 있을 때
+    if (isSameDay(viewingDate, today)) {
+        return board.tasks.filter(task => {
+            const taskCreationDate = task.createdDate ? new Date(task.createdDate) : new Date(0);
+            taskCreationDate.setHours(0, 0, 0, 0);
+            // 완료되지 않았거나, 오늘 생성된 태스크
+            return !task.completed || isSameDay(taskCreationDate, today);
+        });
+    }
+
+    // 2. 과거 날짜를 보고 있을 때
+    if (viewingDate < today) {
+        return board.tasks.filter(task => {
+            return task.completed && task.completedDate && isSameDay(new Date(task.completedDate), viewingDate);
+        });
+    }
+
+    // 3. 미래 날짜를 보고 있을 때
+    if (viewingDate > today) {
+        return board.tasks.filter(task => {
+            const taskCreationDate = task.createdDate ? new Date(task.createdDate) : new Date(0);
+            return isSameDay(taskCreationDate, viewingDate);
+        });
+    }
+
+    return board.tasks;
+};
+
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
