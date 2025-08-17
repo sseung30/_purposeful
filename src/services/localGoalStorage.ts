@@ -1,285 +1,137 @@
-import { supabase } from '../lib/supabase';
+import localforage from 'localforage';
+import { v4 as uuidv4 } from 'uuid';
 import { GoalBoard, Task } from '../types/Goal';
 import { getDateRangeForTimeframe } from '../utils/dateHelpers';
 
-class SupabaseGoalStorage {
+const BOARDS_KEY = 'goalBoards';
+
+class LocalGoalStorage {
+  constructor() {
+    localforage.config({
+      name: 'GoalDashboard',
+      storeName: 'goals',
+    });
+  }
+
   async getAllBoards(): Promise<GoalBoard[]> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return [];
+    return (await localforage.getItem<GoalBoard[]>(BOARDS_KEY)) || [];
+  }
 
-    const { data: boardsData, error } = await supabase
-      .from('goal_boards')
-      .select(`
-        *,
-        tasks (*)
-      `)
-      .eq('user_id', user.user.id)
-      .order('timeframe');
+  async saveAllBoards(boards: GoalBoard[]): Promise<void> {
+    await localforage.setItem(BOARDS_KEY, boards);
+  }
 
-    if (error) {
-      console.error('Error fetching boards:', error);
-      return [];
+  async initializeDefaultBoards(): Promise<void> {
+    let boards = await this.getAllBoards();
+    if (boards.length > 0) {
+       // Update titles for existing boards on initialization
+       boards.forEach(board => {
+           board.title = this.getTitleForTimeframe(board.timeframe, board.currentDate);
+       });
+       await this.saveAllBoards(boards);
+       return;
     }
 
-    return boardsData.map(board => ({
-      id: board.id,
-      timeframe: board.timeframe as GoalBoard['timeframe'],
-      title: board.title,
-      currentDate: new Date(), // This will be updated by the title calculation
-      tasks: (board.tasks || [])
-        .map(task => ({
-          id: task.id,
-          text: task.text,
-          completed: task.completed,
-          order: task.order_index,
-          createdDate: new Date(task.created_at),
-          completedDate: task.completed_at ? new Date(task.completed_at) : undefined
-        }))
-        .sort((a, b) => a.order - b.order),
-      createdAt: new Date(board.created_at),
-      updatedAt: new Date(board.updated_at)
+    const timeframes: GoalBoard['timeframe'][] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'lifelong'];
+    const defaultBoards: GoalBoard[] = timeframes.map(tf => ({
+      id: uuidv4(),
+      timeframe: tf,
+      title: this.getTitleForTimeframe(tf),
+      currentDate: new Date(),
+      tasks: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }));
+    await this.saveAllBoards(defaultBoards);
   }
 
-  async getBoardByTimeframe(timeframe: GoalBoard['timeframe']): Promise<GoalBoard | null> {
-    const boards = await this.getAllBoards();
-    return boards.find(board => board.timeframe === timeframe) || null;
+  private getTitleForTimeframe(timeframe: GoalBoard['timeframe'], date: Date = new Date()): string {
+    if (timeframe === 'lifelong') return 'Life Goals';
+    if (timeframe === 'daily') return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return getDateRangeForTimeframe(timeframe, date);
   }
 
-  async saveBoard(board: GoalBoard): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const { error } = await supabase
-      .from('goal_boards')
-      .upsert({
-        id: board.id,
-        user_id: user.user.id,
-        timeframe: board.timeframe,
-        title: board.title,
-        updated_at: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error('Error saving board:', error);
-    }
-  }
-
-  async updateBoardTasks(timeframe: GoalBoard['timeframe'], tasks: Task[]): Promise<void> {
-    const board = await this.getBoardByTimeframe(timeframe);
-    if (!board) return;
-
-    // Update all task orders in a single transaction
-    const updates = tasks.map((task, index) => ({
-      id: task.id,
-      order_index: index,
-      updated_at: new Date().toISOString()
-    }));
-
-    const { error } = await supabase
-      .from('tasks')
-      .upsert(updates);
-
-    if (error) {
-      console.error('Error updating task order:', error);
-    }
-  }
 
   async addTaskToBoard(timeframe: GoalBoard['timeframe'], taskText: string): Promise<Task | null> {
-    const board = await this.getBoardByTimeframe(timeframe);
-    if (!board) return null;
+    const boards = await this.getAllBoards();
+    const boardIndex = boards.findIndex(b => b.timeframe === timeframe);
+    if (boardIndex === -1) return null;
 
-    const newTask = {
-      board_id: board.id,
+    const newTask: Task = {
+      id: uuidv4(),
       text: taskText,
       completed: false,
-      order_index: board.tasks.length
+      order: boards[boardIndex].tasks.length,
+      createdDate: new Date(),
     };
 
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert(newTask)
-      .select()
-      .single();
+    boards[boardIndex].tasks.push(newTask);
+    await this.saveAllBoards(boards);
+    return newTask;
+  }
 
-    if (error) {
-      console.error('Error adding task:', error);
-      return null;
+  async updateTaskOrder(timeframe: GoalBoard['timeframe'], tasks: Task[]): Promise<void> {
+    const boards = await this.getAllBoards();
+    const boardIndex = boards.findIndex(b => b.timeframe === timeframe);
+    if (boardIndex !== -1) {
+      // Re-assign order index based on new array order
+      const updatedTasks = tasks.map((task, index) => ({ ...task, order: index }));
+      boards[boardIndex].tasks = updatedTasks;
+      await this.saveAllBoards(boards);
     }
-
-    return {
-      id: data.id,
-      text: data.text,
-      completed: data.completed,
-      order: data.order_index,
-      createdDate: new Date(data.created_at),
-      completedDate: undefined
-    };
   }
 
   async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
-    const { data: currentTask } = await supabase
-      .from('tasks')
-      .select('completed')
-      .eq('id', taskId)
-      .single();
-
-    if (currentTask) {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ 
-          completed: !currentTask.completed,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error toggling task completion:', error);
+    const boards = await this.getAllBoards();
+    const board = boards.find(b => b.timeframe === timeframe);
+    if (board) {
+      const task = board.tasks.find(t => t.id === taskId);
+      if (task) {
+        task.completed = !task.completed;
+        task.completedDate = task.completed ? new Date() : undefined;
+        await this.saveAllBoards(boards);
       }
     }
   }
 
   async deleteTask(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error deleting task:', error);
+    const boards = await this.getAllBoards();
+    const board = boards.find(b => b.timeframe === timeframe);
+    if (board) {
+      board.tasks = board.tasks.filter(t => t.id !== taskId);
+      await this.saveAllBoards(boards);
     }
   }
 
   async updateTaskText(timeframe: GoalBoard['timeframe'], taskId: string, newText: string): Promise<void> {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ 
-        text: newText,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error updating task text:', error);
-    }
-  }
-
-  async initializeDefaultBoards(): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const timeframes: GoalBoard['timeframe'][] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'lifelong'];
-    
-    // Update existing board titles first
-    await this.updateExistingBoardTitles();
-    
-    for (const timeframe of timeframes) {
-      const existing = await this.getBoardByTimeframe(timeframe);
-      if (!existing) {
-        const board: Omit<GoalBoard, 'tasks'> = {
-          id: crypto.randomUUID(),
-          timeframe,
-          title: this.getTitleForTimeframe(timeframe),
-          currentDate: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-
-        const { error } = await supabase
-          .from('goal_boards')
-          .insert({
-            id: board.id,
-            user_id: user.user.id,
-            timeframe: board.timeframe,
-            title: board.title
-          });
-
-        if (error) {
-          console.error('Error creating board:', error);
-        }
+    const boards = await this.getAllBoards();
+    const board = boards.find(b => b.timeframe === timeframe);
+    if (board) {
+      const task = board.tasks.find(t => t.id === taskId);
+      if (task) {
+        task.text = newText;
+        await this.saveAllBoards(boards);
       }
     }
   }
-
+  
   async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
-    // For daily boards, handle task migration
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    const targetDate = new Date(newDate);
-    targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    let newTitle: string;
-    if (timeframe === 'daily') {
-      newTitle = newDate.toLocaleDateString('en-US', { 
-        day: 'numeric',
-        month: 'short'
-      });
-    } else {
-      newTitle = this.getTitleForTimeframe(timeframe, newDate);
-    }
-    
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const { error } = await supabase
-      .from('goal_boards')
-      .update({ 
-        title: newTitle,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.user.id)
-      .eq('timeframe', timeframe);
-
-    if (error) {
-      console.error('Error updating board date:', error);
-    }
-  }
-
-  async updateExistingBoardTitles(): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const timeframes: GoalBoard['timeframe'][] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'lifelong'];
-    
-    for (const timeframe of timeframes) {
-      const newTitle = this.getTitleForTimeframe(timeframe);
-      
-      const { error } = await supabase
-        .from('goal_boards')
-        .update({ 
-          title: newTitle,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.user.id)
-        .eq('timeframe', timeframe);
-
-      if (error) {
-        console.error('Error updating board title:', error);
+      const boards = await this.getAllBoards();
+      const board = boards.find(b => b.timeframe === timeframe);
+      if (board) {
+          board.currentDate = newDate;
+          board.title = this.getTitleForTimeframe(timeframe, newDate);
+          await this.saveAllBoards(boards);
       }
-    }
   }
 
-  private getTitleForTimeframe(timeframe: GoalBoard['timeframe'], date?: Date): string {
-    switch (timeframe) {
-      case 'daily':
-        const targetDate = date || new Date();
-        return targetDate.toLocaleDateString('en-US', { 
-          day: 'numeric',
-          month: 'short'
-        });
-      case 'weekly':
-        return getDateRangeForTimeframe('weekly', date);
-      case 'monthly':
-        return getDateRangeForTimeframe('monthly', date);
-      case 'quarterly':
-        return getDateRangeForTimeframe('quarterly', date);
-      case 'yearly':
-        return getDateRangeForTimeframe('yearly', date);
-      case 'lifelong':
-        return 'Life';
-      default:
-        return '';
-    }
+  async exportData(): Promise<GoalBoard[]> {
+      return this.getAllBoards();
+  }
+
+  async importData(data: GoalBoard[]): Promise<void> {
+      await this.saveAllBoards(data);
   }
 }
 
-export const supabaseGoalStorage = new SupabaseGoalStorage();
+export const localGoalStorage = new LocalGoalStorage();
