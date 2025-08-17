@@ -189,15 +189,8 @@ class LocalGoalStorage {
             return false;
           });
         } else if (isFutureDate) {
-          // When viewing future dates, only show tasks created specifically for that date
-          board.tasks = board.tasks.filter(task => {
-            if (task.createdDate) {
-              const createdDate = new Date(task.createdDate);
-              createdDate.setHours(0, 0, 0, 0);
-              return createdDate.getTime() === targetDate.getTime();
-            }
-            return false;
-          });
+          // When viewing future dates, show no tasks (empty board)
+          board.tasks = [];
         } else if (isPastDate) {
           // When viewing past dates, show tasks completed on that specific date
           board.tasks = board.tasks.filter(task => {

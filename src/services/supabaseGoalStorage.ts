@@ -246,19 +246,17 @@ class SupabaseGoalStorage {
           }
         }
       } else if (isFutureDate) {
-        // When viewing future dates, only show tasks created for that specific date
+        // When viewing future dates, show no tasks (empty board)
         const board = await this.getBoardByTimeframe(timeframe);
         if (board) {
-          // Remove all tasks not created on the target date
+          // Remove all tasks for future dates
           const { error } = await supabase
             .from('tasks')
             .delete()
-            .eq('board_id', board.id)
-            .not('created_at', 'gte', targetDate.toISOString())
-            .not('created_at', 'lt', new Date(targetDate.getTime() + 24 * 60 * 60 * 1000).toISOString());
+            .eq('board_id', board.id);
           
           if (error) {
-            console.error('Error filtering tasks for future date:', error);
+            console.error('Error clearing tasks for future date:', error);
           }
         }
       } else if (isPastDate) {
