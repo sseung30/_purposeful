@@ -13,7 +13,8 @@ class SupabaseGoalStorage {
         *,
         tasks (*)
       `)
-      .eq('user_id', user.user.id);
+      .eq('user_id', user.user.id)
+      .order('timeframe');
 
     if (error) {
       console.error('Error fetching boards:', error);
@@ -22,10 +23,11 @@ class SupabaseGoalStorage {
 
     return boardsData.map(board => ({
       id: board.id,
-      timeframe: board.timeframe,
+      timeframe: board.timeframe as GoalBoard['timeframe'],
       title: board.title,
-      currentDate: new Date(),
-      tasks: board.tasks.map((task: any) => ({
+      currentDate: new Date(), // This will be updated by the title calculation
+      tasks: (board.tasks || [])
+        .map(task => ({
           id: task.id,
           text: task.text,
           completed: task.completed,
@@ -199,17 +201,10 @@ class SupabaseGoalStorage {
     }
   }
 
-  async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     // For daily boards, handle task migration
-    if (timeframe === 'daily') {
-      const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       const targetDate = new Date(newDate);
       targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-      // The filtering will be handled in getAllBoards method
-      // No need to modify tasks here, just update the board title
-    }
-    
     let newTitle: string;
     if (timeframe === 'daily') {
       newTitle = newDate.toLocaleDateString('en-US', { 
