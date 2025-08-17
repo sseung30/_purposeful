@@ -187,8 +187,15 @@ class LocalGoalStorage {
               return completedDate.getTime() === today.getTime();
             }
             return false;
+          // Future dates: Only show tasks created specifically for this date
+          board.tasks = board.tasks.filter(task => {
+            if (task.createdDate) {
+              const createdDate = new Date(task.createdDate);
+              createdDate.setHours(0, 0, 0, 0);
+              return createdDate.getTime() === targetDate.getTime();
+            }
+            return false;
           });
-        } else if (isFutureDate) {
           // When viewing future dates, show no tasks (empty board)
           board.tasks = [];
         } else if (isPastDate) {
