@@ -211,47 +211,69 @@ class SupabaseGoalStorage {
       
       const isMovingToToday = targetDate.getTime() === today.getTime();
       const isFutureDate = targetDate.getTime() > today.getTime();
+      const isPastDate = targetDate.getTime() < today.getTime();
       
       if (isMovingToToday) {
-        // When navigating to "today", only show incomplete tasks
-        // Completed tasks stay on their original dates
+        // When viewing "today", show all incomplete tasks (they migrate to today)
+        // and tasks completed today
         const board = await this.getBoardByTimeframe(timeframe);
         if (board) {
-          const incompleteTasks = board.tasks.filter(task => !task.completed);
+          // Update incomplete tasks to migrate to today
+          const { error: updateError } = await supabase
+            .from('tasks')
+            .update({ 
+              created_at: today.toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('board_id', board.id)
+            .eq('completed', false);
           
-          // Delete completed tasks from the current board view
-          const completedTaskIds = board.tasks
-            .filter(task => task.completed)
-            .map(task => task.id);
+          if (updateError) {
+            console.error('Error migrating incomplete tasks:', updateError);
+          }
           
-          if (completedTaskIds.length > 0) {
-            const { error } = await supabase
-              .from('tasks')
-              .delete()
-              .in('id', completedTaskIds);
-            
-            if (error) {
-              console.error('Error removing completed tasks:', error);
-            }
+          // Remove completed tasks that weren't completed today
+          const { error: deleteError } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('board_id', board.id)
+            .eq('completed', true)
+            .not('updated_at', 'gte', today.toISOString())
+            .not('updated_at', 'lt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString());
+          
+          if (deleteError) {
+            console.error('Error removing old completed tasks:', deleteError);
           }
         }
       } else if (isFutureDate) {
-        // When navigating to future dates, hide all completed tasks
+        // When viewing future dates, only show tasks created for that specific date
         const board = await this.getBoardByTimeframe(timeframe);
         if (board) {
-          const completedTaskIds = board.tasks
-            .filter(task => task.completed)
-            .map(task => task.id);
+          // Remove all tasks not created on the target date
+          const { error } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('board_id', board.id)
+            .not('created_at', 'gte', targetDate.toISOString())
+            .not('created_at', 'lt', new Date(targetDate.getTime() + 24 * 60 * 60 * 1000).toISOString());
           
-          if (completedTaskIds.length > 0) {
-            const { error } = await supabase
-              .from('tasks')
-              .delete()
-              .in('id', completedTaskIds);
-            
-            if (error) {
-              console.error('Error removing completed tasks for future date:', error);
-            }
+          if (error) {
+            console.error('Error filtering tasks for future date:', error);
+          }
+        }
+      } else if (isPastDate) {
+        // When viewing past dates, only show tasks completed on that specific date
+        const board = await this.getBoardByTimeframe(timeframe);
+        if (board) {
+          // Remove all tasks except those completed on the target date
+          const { error } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('board_id', board.id)
+            .or(`completed.eq.false,and(completed.eq.true,not(updated_at.gte.${targetDate.toISOString()},updated_at.lt.${new Date(targetDate.getTime() + 24 * 60 * 60 * 1000).toISOString()}))`);
+          
+          if (error) {
+            console.error('Error filtering tasks for past date:', error);
           }
         }
       }

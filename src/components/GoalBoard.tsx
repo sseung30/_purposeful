@@ -38,36 +38,9 @@ export const GoalBoard: React.FC<GoalBoardProps> = ({
 
   // Filter tasks based on date for daily boards
   const getFilteredTasks = () => {
-    if (board.timeframe !== 'daily' || !board.currentDate) {
-      return board.tasks;
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const currentDate = new Date(board.currentDate);
-    currentDate.setHours(0, 0, 0, 0);
-
-    const isToday = currentDate.getTime() === today.getTime();
-    const isFuture = currentDate.getTime() > today.getTime();
-
-    if (isFuture) {
-      // For future dates, only show incomplete tasks
-      return board.tasks.filter(task => !task.completed);
-    } else if (isToday) {
-      // For today, show all tasks
-      return board.tasks;
-    } else {
-      // For past dates, show tasks completed on that date + incomplete tasks
-      return board.tasks.filter(task => {
-        if (!task.completed) return true;
-        if (task.completedDate) {
-          const completedDate = new Date(task.completedDate);
-          completedDate.setHours(0, 0, 0, 0);
-          return completedDate.getTime() === currentDate.getTime();
-        }
-        return false;
-      });
-    }
+    // The filtering is now handled in the storage layer
+    // Just return all tasks from the board
+    return board.tasks;
   };
 
   const filteredTasks = getFilteredTasks();

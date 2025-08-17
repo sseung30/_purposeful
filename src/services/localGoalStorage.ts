@@ -50,12 +50,14 @@ class LocalGoalStorage {
     const board = await this.getBoardByTimeframe(timeframe);
     if (!board) return null;
 
+    const currentDate = board.currentDate || new Date();
+
     const newTask: Task = {
       id: uuidv4(),
       text: taskText,
       completed: false,
       order: board.tasks.length,
-      createdDate: new Date(),
+      createdDate: new Date(currentDate), // Use the board's current date
       completedDate: undefined
     };
 
@@ -70,7 +72,8 @@ class LocalGoalStorage {
       const task = board.tasks.find(t => t.id === taskId);
       if (task) {
         task.completed = !task.completed;
-        task.completedDate = task.completed ? new Date() : undefined;
+        // Set completion date to the board's current date (not necessarily today)
+        task.completedDate = task.completed ? new Date(board.currentDate || new Date()) : undefined;
         await this.saveBoard(board);
       }
     }
@@ -158,27 +161,24 @@ class LocalGoalStorage {
     if (board) {
       // For daily boards, handle task migration
       if (timeframe === 'daily') {
-        console.log('Updating daily board date to:', newDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
         const targetDate = new Date(newDate);
         targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
         
-        console.log('Today:', today, 'Target:', targetDate);
-        console.log('Is future?', targetDate.getTime() > today.getTime());
-        
         const isMovingToToday = targetDate.getTime() === today.getTime();
         const isFutureDate = targetDate.getTime() > today.getTime();
+        const isPastDate = targetDate.getTime() < today.getTime();
         
-        console.log('Tasks before filtering:', board.tasks.length);
-        
-        // Filter tasks based on the target date
         if (isMovingToToday) {
-          // When viewing "today", show all incomplete tasks regardless of when they were created
-          // and only show completed tasks that were completed today
+          // When viewing "today", show:
+          // 1. All incomplete tasks (they migrate to today)
+          // 2. Tasks completed today
           board.tasks = board.tasks.filter(task => {
             if (!task.completed) {
-              return true; // Show all incomplete tasks
+              // Update incomplete tasks to have today as their created date (migration)
+              task.createdDate = today;
+              return true;
             }
             // For completed tasks, only show if completed today
             if (task.completedDate) {
@@ -189,29 +189,29 @@ class LocalGoalStorage {
             return false;
           });
         } else if (isFutureDate) {
-          // When viewing future dates, only show incomplete tasks
-          console.log('Filtering for future date - hiding completed tasks');
-          board.tasks = board.tasks.filter(task => !task.completed);
-        } else {
-          // When viewing a specific past/future date, show:
-          // 1. Tasks completed on that specific date
-          // 2. Incomplete tasks that were created on or before that date
+          // When viewing future dates, only show tasks created specifically for that date
+          board.tasks = board.tasks.filter(task => {
+            if (task.createdDate) {
+              const createdDate = new Date(task.createdDate);
+              createdDate.setHours(0, 0, 0, 0);
+              return createdDate.getTime() === targetDate.getTime();
+            }
+            return false;
+          });
+        } else if (isPastDate) {
+          // When viewing past dates, show tasks completed on that specific date
           board.tasks = board.tasks.filter(task => {
             if (task.completed && task.completedDate) {
               const completedDate = new Date(task.completedDate);
               completedDate.setHours(0, 0, 0, 0);
               return completedDate.getTime() === targetDate.getTime();
             }
-            if (!task.completed && task.createdDate) {
-              const createdDate = new Date(task.createdDate);
-              createdDate.setHours(0, 0, 0, 0);
-              return createdDate.getTime() <= targetDate.getTime();
-            }
             return false;
           });
+        } else {
+          // Fallback case
+          board.tasks = [];
         }
-        
-        console.log('Tasks after filtering:', board.tasks.length);
       }
       
       board.currentDate = newDate;
