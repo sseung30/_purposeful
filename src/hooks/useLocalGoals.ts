@@ -91,8 +91,8 @@ export const useLocalGoals = () => {
         ? { 
             ...board, 
             currentDate: newDate,
-            title: board.timeframe === 'daily' ? 'Today' : 
-                   board.timeframe === 'lifelong' ? 'Life Goals' :
+            title: board.timeframe === 'daily' ? 'Today' :
+                   board.timeframe === 'lifelong' ? 'Life' :
                    getDateRangeForTimeframe(board.timeframe, newDate)
           }
         : board
