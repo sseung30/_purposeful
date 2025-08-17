@@ -1,7 +1,6 @@
 import React from 'react';
 import { AuthWrapper } from './components/AuthWrapper';
 import { AuthModal } from './components/AuthModal';
-import { CloudSyncBanner } from './components/CloudSyncBanner';
 import { Header } from './components/Header';
 import { GoalBoard } from './components/GoalBoard';
 import { useSupabaseGoals } from './hooks/useSupabaseGoals';
@@ -91,11 +90,6 @@ function App() {
             />
             
             <main className="p-6">
-              {/* Cloud Sync Banner - only show when not logged in */}
-              {!user && (
-                <CloudSyncBanner onSignIn={() => setShowAuthModal(true)} />
-              )}
-
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
                 {/* Daily Goals - 25% */}
                 <div className="lg:col-span-1">
