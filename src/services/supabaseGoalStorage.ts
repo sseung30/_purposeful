@@ -235,9 +235,7 @@ class SupabaseGoalStorage {
     
     let newTitle: string;
     if (timeframe === 'daily') {
-      const today = new Date();
-      const isToday = newDate.toDateString() === today.toDateString();
-      newTitle = isToday ? 'Today' : newDate.toLocaleDateString('en-US', { 
+      newTitle = newDate.toLocaleDateString('en-US', { 
         day: 'numeric',
         month: 'short'
       });
@@ -290,17 +288,10 @@ class SupabaseGoalStorage {
     switch (timeframe) {
       case 'daily':
         const targetDate = date || new Date();
-        const today = new Date();
-        const isToday = targetDate.toDateString() === today.toDateString();
-        
-        if (isToday) {
-          return 'Today';
-        } else {
-          return targetDate.toLocaleDateString('en-US', { 
-            day: 'numeric',
-            month: 'short'
-          });
-        }
+        return targetDate.toLocaleDateString('en-US', { 
+          day: 'numeric',
+          month: 'short'
+        });
       case 'weekly':
         return getDateRangeForTimeframe('weekly', date);
       case 'monthly':
