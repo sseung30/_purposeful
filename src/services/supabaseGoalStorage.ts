@@ -21,7 +21,7 @@ class SupabaseGoalStorage {
       return [];
     }
 
-    return boardsData.map(board => ({
+ return boardsData.map(board => ({
       id: board.id,
       timeframe: board.timeframe as GoalBoard['timeframe'],
       title: board.title,
@@ -33,7 +33,7 @@ class SupabaseGoalStorage {
           completed: task.completed,
           order: task.order_index,
           createdDate: new Date(task.created_at),
-          completedDate: task.completed_at ? new Date(task.completed_at) : undefined
+          completedDate: task.completed_at ? new Date(task.completed_at) : undefined // 이 줄을 수정/추가하세요
         }))
         .sort((a, b) => a.order - b.order),
       createdAt: new Date(board.created_at),
