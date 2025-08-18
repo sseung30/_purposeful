@@ -40,7 +40,7 @@ export const useLocalGoals = () => {
   };
 
   const updateTaskOrder = async (timeframe: GoalBoard['timeframe'], tasks: Task[]) => {
-    await localGoalStorage.updateTaskOrder(timeframe, tasks);
+    await localGoalStorage.updateBoardTasks(timeframe, tasks);
     setBoards(prev => prev.map(board => 
       board.timeframe === timeframe 
         ? { ...board, tasks }
