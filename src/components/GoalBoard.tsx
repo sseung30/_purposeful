@@ -8,10 +8,13 @@ class SupabaseGoalStorage {
     if (!user.user) return [];
 
     const { data: boardsData, error } = await supabase
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
+      .from('goal_boards')
+      .select(`
+        *,
+        tasks (*)
+      `)
+      .eq('user_id', user.user.id)
+      .order('timeframe');
 
     if (error) {
       console.error('Error fetching boards:', error);
