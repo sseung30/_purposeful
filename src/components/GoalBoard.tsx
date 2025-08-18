@@ -84,13 +84,21 @@ export const GoalBoard: React.FC<GoalBoardProps> = ({
       case 'daily':
         return current.toDateString() === today.toDateString();
       case 'weekly':
-        const startOfWeek = new Date(today);
-        const day = startOfWeek.getDay();
-        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-        startOfWeek.setDate(diff);
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        return current >= startOfWeek && current <= endOfWeek;
+        // Get start of current week (Monday)
+        const todayStartOfWeek = new Date(today);
+        const todayDay = todayStartOfWeek.getDay();
+        const todayDiff = todayStartOfWeek.getDate() - todayDay + (todayDay === 0 ? -6 : 1);
+        todayStartOfWeek.setDate(todayDiff);
+        todayStartOfWeek.setHours(0, 0, 0, 0);
+        
+        // Get start of board's week (Monday)
+        const boardStartOfWeek = new Date(current);
+        const boardDay = boardStartOfWeek.getDay();
+        const boardDiff = boardStartOfWeek.getDate() - boardDay + (boardDay === 0 ? -6 : 1);
+        boardStartOfWeek.setDate(boardDiff);
+        boardStartOfWeek.setHours(0, 0, 0, 0);
+        
+        return todayStartOfWeek.getTime() === boardStartOfWeek.getTime();
       case 'monthly':
         return current.getMonth() === today.getMonth() && current.getFullYear() === today.getFullYear();
       case 'quarterly':
