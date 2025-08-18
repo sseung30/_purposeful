@@ -15,11 +15,7 @@ class SupabaseGoalStorage {
       `)
       .eq('user_id', user.user.id)
       .order('timeframe');
-            title: board.timeframe === 'daily' ? newDate.toLocaleDateString('en-US', { 
-                     day: 'numeric',
-                     month: 'short'
-                   }) :
-                   board.timeframe === 'lifelong' ? 'Life' :
+
     if (error) {
       console.error('Error fetching boards:', error);
       return [];
