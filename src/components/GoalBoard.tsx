@@ -13,15 +13,14 @@ class SupabaseGoalStorage {
         *,
         tasks (*)
       `)
-      .eq('user_id', user.user.id)
-      .order('timeframe');
+      .eq('user_id', user.user.id);
 
     if (error) {
       console.error('Error fetching boards:', error);
       return [];
     }
 
- return boardsData.map(board => ({
+    return boardsData.map(board => ({
       id: board.id,
       timeframe: board.timeframe as GoalBoard['timeframe'],
       title: board.title,
@@ -117,7 +116,7 @@ class SupabaseGoalStorage {
     };
   }
 
-async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
+  async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
     const { data: currentTask } = await supabase
       .from('tasks')
       .select('completed')
