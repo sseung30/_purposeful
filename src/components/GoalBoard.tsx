@@ -13,44 +13,30 @@ class SupabaseGoalStorage {
         *,
         tasks (*)
       `)
-      .eq('user_id', user.user.id)
-        {/* Left Chevron */}
-        {canNavigate ? (
-          <button
-            onClick={() => navigateDate('prev')}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4 text-gray-600" />
-          </button>
-        ) : (
-          <div className="w-6 h-6"></div>
-        )}
-        
-        {/* Centered Title */}
-        <h2 className="text-lg font-semibold text-gray-800 text-center flex-1">
-          {board.title}
-        </h2>
-        
-        {/* Right Chevron */}
-        {canNavigate ? (
-          <button
-            onClick={() => navigateDate('next')}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 text-gray-600" />
-          </button>
-        ) : (
-          <div className="w-6 h-6"></div>
-        )}
-          completed: task.completed,
-          order: task.order_index,
-          createdDate: new Date(task.created_at),
-          completedDate: task.completed_at ? new Date(task.completed_at) : undefined // 이 줄을 수정/추가하세요
-        }))
+      .eq('user_id', user.user.id);
+
+    if (error) {
+      console.error('Error fetching boards:', error);
+      return [];
+    }
+
+    return boardsData?.map(board => ({
+      id: board.id,
+      timeframe: board.timeframe,
+      title: board.title,
+      currentDate: new Date(),
+      tasks: board.tasks?.map((task: any) => ({
+        id: task.id,
+        text: task.text,
+        completed: task.completed,
+        order: task.order_index,
+        createdDate: new Date(task.created_at),
+        completedDate: task.completed_at ? new Date(task.completed_at) : undefined
+      }))
         .sort((a, b) => a.order - b.order),
       createdAt: new Date(board.created_at),
       updatedAt: new Date(board.updated_at)
-    }));
+    })) || [];
   }
 
   async getBoardByTimeframe(timeframe: GoalBoard['timeframe']): Promise<GoalBoard | null> {
@@ -142,7 +128,7 @@ async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): P
         .from('tasks')
         .update({
           completed: isNowCompleted,
-          completed_at: isNowCompleted ? new Date().toISOString() : null, // 이 로직을 수정/추가하세요
+          completed_at: isNowCompleted ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', taskId);
