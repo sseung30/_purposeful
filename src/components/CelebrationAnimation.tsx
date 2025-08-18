@@ -73,9 +73,6 @@ export const CelebrationAnimation: React.FC<CelebrationAnimationProps> = ({
           <h2 className="text-2xl font-bold text-gray-800 mb-2 animate-slide-up">
             잘했어요! 🎉
           </h2>
-          <p className="text-gray-600 animate-slide-up-delay">
-            또 하나의 목표를 달성했습니다!
-          </p>
         </div>
       </div>
     </div>
