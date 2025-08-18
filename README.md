@@ -57,6 +57,25 @@ A beautiful, responsive goal tracking application built with React, TypeScript, 
    npm run dev
    ```
 
+## 🚀 Vercel Deployment
+
+### Quick Deploy
+1. Push your code to GitHub
+2. Connect your GitHub repo to Vercel
+3. Set environment variables in Vercel dashboard:
+   - `VITE_SUPABASE_URL` (optional)
+   - `VITE_SUPABASE_ANON_KEY` (optional)
+4. Deploy automatically!
+
+### Manual Deploy
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel --prod
+```
+
 ### Database Setup (for cloud sync)
 
 If you want to use cloud sync, you'll need to set up the database schema in Supabase:
