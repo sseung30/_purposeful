@@ -7,7 +7,7 @@ interface CloudSyncBannerProps {
 
 export const CloudSyncBanner: React.FC<CloudSyncBannerProps> = ({ onSignIn }) => {
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6 hidden">
       <div className="flex items-start gap-4">
         <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
           <Cloud className="w-5 h-5 text-blue-600" />
