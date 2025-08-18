@@ -162,23 +162,6 @@ class LocalGoalStorage {
   async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     const board = await this.getBoardByTimeframe(timeframe);
     if (board) {
-      // For daily boards, filter tasks by target date
-      if (timeframe === 'daily') {
-        // Get all tasks for this board from storage
-        const allBoards = await this.getAllBoards();
-        const dailyBoard = allBoards.find(b => b.timeframe === 'daily');
-        if (dailyBoard) {
-          // Filter tasks to show only those with matching target date
-          board.tasks = dailyBoard.tasks.filter(task => {
-            if (task.targetDate) {
-              return task.targetDate.toDateString() === newDate.toDateString();
-            }
-            // For legacy tasks without targetDate, show them on all dates
-            return true;
-          });
-        }
-      }
-      
       board.currentDate = newDate;
       if (timeframe === 'daily') {
         board.title = newDate.toLocaleDateString('en-US', { 
@@ -190,6 +173,23 @@ class LocalGoalStorage {
       }
       await this.saveBoard(board);
     }
+  }
+
+  // New method to get filtered tasks for display
+  async getFilteredTasksForDate(timeframe: GoalBoard['timeframe'], date: Date): Promise<Task[]> {
+    const board = await this.getBoardByTimeframe(timeframe);
+    if (!board || timeframe !== 'daily') {
+      return board?.tasks || [];
+    }
+
+    // For daily boards, filter tasks by target date
+    return board.tasks.filter(task => {
+      if (task.targetDate) {
+        return task.targetDate.toDateString() === date.toDateString();
+      }
+      // For legacy tasks without targetDate, show them on all dates
+      return true;
+    });
   }
 }
 

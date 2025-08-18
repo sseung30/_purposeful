@@ -11,7 +11,20 @@ export const useLocalGoals = () => {
     try {
       await localGoalStorage.initializeDefaultBoards();
       const allBoards = await localGoalStorage.getAllBoards();
-      setBoards(allBoards);
+      
+      // For daily boards, filter tasks by current date
+      const boardsWithFilteredTasks = await Promise.all(
+        allBoards.map(async board => {
+          if (board.timeframe === 'daily') {
+            const currentDate = board.currentDate || new Date();
+            const filteredTasks = await localGoalStorage.getFilteredTasksForDate('daily', currentDate);
+            return { ...board, tasks: filteredTasks };
+          }
+          return board;
+        })
+      );
+      
+      setBoards(boardsWithFilteredTasks);
     } catch (error) {
       console.error('Failed to load boards:', error);
     } finally {
@@ -86,14 +99,16 @@ export const useLocalGoals = () => {
 
   const updateBoardDate = async (timeframe: GoalBoardType['timeframe'], newDate: Date) => {
     await localGoalStorage.updateBoardDate(timeframe, newDate);
-    // Reload the updated board to get filtered tasks
-    const updatedBoard = await localGoalStorage.getBoardByTimeframe(timeframe);
+    
+    // Get filtered tasks for the new date (for daily boards only)
+    const filteredTasks = await localGoalStorage.getFilteredTasksForDate(timeframe, newDate);
+    
     setBoards(prev => prev.map(board => 
       board.timeframe === timeframe 
         ? { 
             ...board, 
             currentDate: newDate,
-            tasks: updatedBoard?.tasks || board.tasks,
+            tasks: timeframe === 'daily' ? filteredTasks : board.tasks,
             title: board.timeframe === 'daily' ? newDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 
                    board.timeframe === 'lifelong' ? 'Life Goals' :
                    getDateRangeForTimeframe(board.timeframe, newDate)
