@@ -135,14 +135,14 @@ function GoalDashboardContent({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16">
+    <div className="min-h-screen bg-gray-50">
       <Header 
         user={user} 
         isCloudMode={isCloudMode} 
         onToggleMode={handleToggleMode}
       />
       
-      <main className="p-6">
+      <main className="p-6 pb-16">
         {/* Cloud Sync Banner - only show when not logged in */}
         {!user && (
           <CloudSyncBanner onSignIn={() => setShowAuthModal(true)} />
