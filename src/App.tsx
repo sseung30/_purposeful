@@ -2,6 +2,7 @@ import React from 'react';
 import { AuthWrapper } from './components/AuthWrapper';
 import { AuthModal } from './components/AuthModal';
 import { CloudSyncBanner } from './components/CloudSyncBanner';
+import { CelebrationAnimation } from './components/CelebrationAnimation';
 import { Header } from './components/Header';
 import { GoalBoard } from './components/GoalBoard';
 import { useSupabaseGoals } from './hooks/useSupabaseGoals';
@@ -61,6 +62,8 @@ function GoalDashboardContent({
   cloudGoals,
   handleAuthSuccess
 }: GoalDashboardContentProps) {
+  const [showCelebration, setShowCelebration] = useState(false);
+
   // Auto-switch to cloud storage when user is logged in
   const isCloudMode = user && useCloudStorage;
   const goals = isCloudMode ? cloudGoals : localGoals;
@@ -108,6 +111,14 @@ function GoalDashboardContent({
   };
 
   const handleToggleTaskCompletion = (timeframe: GoalBoardType['timeframe']) => (taskId: string) => {
+    const board = goals.getBoardByTimeframe(timeframe);
+    const task = board?.tasks.find(t => t.id === taskId);
+    
+    // Show celebration if task is being completed (not uncompleted)
+    if (task && !task.completed) {
+      setShowCelebration(true);
+    }
+    
     goals.toggleTaskCompletion(timeframe, taskId);
   };
 
@@ -246,6 +257,12 @@ function GoalDashboardContent({
         isOpen={showAuthModal} 
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
+      />
+
+      {/* Celebration Animation */}
+      <CelebrationAnimation 
+        isVisible={showCelebration}
+        onComplete={() => setShowCelebration(false)}
       />
     </div>
   );
