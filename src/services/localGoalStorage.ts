@@ -159,46 +159,7 @@ class LocalGoalStorage {
     await localforage.setItem(this.storageKey, boards);
   }
 
-  // 미완료 태스크를 새로운 날짜로 롤오버하는 함수
-  private async rolloverIncompleteTasks(newDate: Date): Promise<void> {
-    const board = await this.getBoardByTimeframe('daily');
-    if (!board) return;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(newDate);
-    targetDate.setHours(0, 0, 0, 0);
-
-    // 오늘에서 내일로 넘어가는 경우에만 롤오버 실행
-    if (targetDate.getTime() === today.getTime() + 24 * 60 * 60 * 1000) {
-      let hasChanges = false;
-      
-      // 오늘의 미완료 태스크를 내일로 이동
-      board.tasks.forEach(task => {
-        if (task.targetDate && !task.completed) {
-          const taskTargetDate = new Date(task.targetDate);
-          taskTargetDate.setHours(0, 0, 0, 0);
-          
-          // 오늘 태스크인 경우 내일로 이동
-          if (taskTargetDate.getTime() === today.getTime()) {
-            task.targetDate = new Date(targetDate);
-            hasChanges = true;
-          }
-        }
-      });
-
-      if (hasChanges) {
-        await this.saveBoard(board);
-      }
-    }
-  }
-
   async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
-    // 날짜 변경 시 미완료 태스크 롤오버 처리
-    if (timeframe === 'daily') {
-      await this.rolloverIncompleteTasks(newDate);
-    }
-    
     const board = await this.getBoardByTimeframe(timeframe);
     if (board) {
       board.currentDate = newDate;
@@ -228,6 +189,7 @@ class LocalGoalStorage {
 
     // For daily boards, filter tasks by target date
     return board.tasks.filter(task => {
+      if (task.targetDate) {
         const taskTargetDate = new Date(task.targetDate);
         taskTargetDate.setHours(0, 0, 0, 0);
         
