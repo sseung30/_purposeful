@@ -162,16 +162,21 @@ class LocalGoalStorage {
   async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
     const board = await this.getBoardByTimeframe(timeframe);
     if (board) {
-      // For daily boards, handle task migration
+      // For daily boards, filter tasks by target date
       if (timeframe === 'daily') {
-        // For daily boards, only show tasks that have the target date matching the selected date
-        board.tasks = board.tasks.filter(task => {
-          if (task.targetDate) {
-            return task.targetDate.toDateString() === newDate.toDateString();
-          }
-          // For legacy tasks without targetDate, show them on all dates
-          return true;
-        });
+        // Get all tasks for this board from storage
+        const allBoards = await this.getAllBoards();
+        const dailyBoard = allBoards.find(b => b.timeframe === 'daily');
+        if (dailyBoard) {
+          // Filter tasks to show only those with matching target date
+          board.tasks = dailyBoard.tasks.filter(task => {
+            if (task.targetDate) {
+              return task.targetDate.toDateString() === newDate.toDateString();
+            }
+            // For legacy tasks without targetDate, show them on all dates
+            return true;
+          });
+        }
       }
       
       board.currentDate = newDate;

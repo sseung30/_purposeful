@@ -86,11 +86,14 @@ export const useLocalGoals = () => {
 
   const updateBoardDate = async (timeframe: GoalBoardType['timeframe'], newDate: Date) => {
     await localGoalStorage.updateBoardDate(timeframe, newDate);
+    // Reload the updated board to get filtered tasks
+    const updatedBoard = await localGoalStorage.getBoardByTimeframe(timeframe);
     setBoards(prev => prev.map(board => 
       board.timeframe === timeframe 
         ? { 
             ...board, 
             currentDate: newDate,
+            tasks: updatedBoard?.tasks || board.tasks,
             title: board.timeframe === 'daily' ? newDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 
                    board.timeframe === 'lifelong' ? 'Life Goals' :
                    getDateRangeForTimeframe(board.timeframe, newDate)
