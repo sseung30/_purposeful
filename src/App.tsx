@@ -135,7 +135,7 @@ function GoalDashboardContent({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-16">
       <Header 
         user={user} 
         isCloudMode={isCloudMode} 
@@ -148,7 +148,7 @@ function GoalDashboardContent({
           <CloudSyncBanner onSignIn={() => setShowAuthModal(true)} />
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-180px)] pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-180px)]">
           {/* Daily Goals - 25% */}
           <div className="lg:col-span-1">
             {dailyBoard && (
