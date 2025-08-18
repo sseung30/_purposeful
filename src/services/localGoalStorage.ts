@@ -139,7 +139,7 @@ class LocalGoalStorage {
       case 'yearly':
         return getDateRangeForTimeframe('yearly', date);
       case 'lifelong':
-        return 'Life Goals';
+        return 'Life';
       default:
         return '';
     }
