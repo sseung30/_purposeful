@@ -221,30 +221,17 @@ class LocalGoalStorage {
       return board?.tasks || [];
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
 
-    // For daily boards, filter tasks by target date
+    // For daily boards, show only tasks with matching target date
     return board.tasks.filter(task => {
       if (task.targetDate) {
         const taskTargetDate = new Date(task.targetDate);
         taskTargetDate.setHours(0, 0, 0, 0);
         
-        // 완료된 태스크는 원래 날짜에만 표시
-        if (task.completed) {
-          return taskTargetDate.getTime() === targetDate.getTime();
-        }
-        
-        // 미완료 태스크의 경우
-        if (targetDate.getTime() === today.getTime()) {
-          // 오늘을 보고 있을 때: 오늘 태스크 + 과거의 미완료 태스크
-          return taskTargetDate.getTime() <= today.getTime();
-        } else {
-          // 다른 날짜를 보고 있을 때: 해당 날짜의 태스크만 (미래 날짜 포함)
-          return taskTargetDate.getTime() === targetDate.getTime();
-        }
+        // 태스크는 targetDate와 정확히 일치하는 날짜에만 표시
+        return taskTargetDate.getTime() === targetDate.getTime();
       }
       // For legacy tasks without targetDate, show them on all dates
       return true;
