@@ -14,7 +14,6 @@ class SupabaseGoalStorage {
         tasks (*)
       `)
       .eq('user_id', user.user.id)
-            onDrop={(e) => handleDrop(e, task.id)}
       .order('timeframe');
 
     if (error) {
