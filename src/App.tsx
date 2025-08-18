@@ -19,15 +19,24 @@ const setupDailyRolloverTimer = (refreshBoards: () => void) => {
   
   const msUntilMidnight = tomorrow.getTime() - now.getTime();
   
+  let midnightTimeout: NodeJS.Timeout;
+  let dailyInterval: NodeJS.Timeout;
+  
   // 자정에 롤오버 실행
-  setTimeout(() => {
+  midnightTimeout = setTimeout(() => {
     refreshBoards(); // 보드 새로고침으로 롤오버 트리거
     
     // 이후 24시간마다 반복
-    setInterval(() => {
+    dailyInterval = setInterval(() => {
       refreshBoards();
     }, 24 * 60 * 60 * 1000);
   }, msUntilMidnight);
+  
+  // 클린업 함수 반환
+  return () => {
+    if (midnightTimeout) clearTimeout(midnightTimeout);
+    if (dailyInterval) clearInterval(dailyInterval);
+  };
 };
 
 function App() {
@@ -40,20 +49,20 @@ function App() {
   // Cloud storage hooks
   const cloudGoals = useSupabaseGoals();
 
-  // 자동 롤오버 타이머 설정
-  React.useEffect(() => {
-    const goals = isCloudMode ? cloudGoals : localGoals;
-    if (goals.refreshBoards) {
-      setupDailyRolloverTimer(goals.refreshBoards);
-    }
-  }, [isCloudMode, localGoals.refreshBoards, cloudGoals.refreshBoards]);
-
   return (
     <AuthWrapper>
       {(user) => {
         // Auto-switch to cloud storage when user is logged in
         const isCloudMode = user && useCloudStorage;
         const goals = isCloudMode ? cloudGoals : localGoals;
+        
+        // 자동 롤오버 타이머 설정
+        React.useEffect(() => {
+          if (goals.refreshBoards) {
+            const cleanup = setupDailyRolloverTimer(goals.refreshBoards);
+            return cleanup;
+          }
+        }, [isCloudMode, goals.refreshBoards]);
 
         const handleToggleMode = () => {
           if (!user) {
