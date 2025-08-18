@@ -90,9 +90,9 @@ class SupabaseGoalStorage {
     const board = await this.getBoardByTimeframe(timeframe);
     if (!board) return null;
 
-    // For daily boards, we need to store the target date in the task text or use a custom field
-    // Since we can't modify the database schema, we'll store it in a way that can be parsed
-    const targetDate = timeframe === 'daily' && board.currentDate 
+    // Set target date based on timeframe and board's current date
+    // Note: We'll need to store this information in the task metadata or extend the schema
+    const targetDate = timeframe !== 'lifelong' && board.currentDate 
       ? board.currentDate 
       : undefined;
 

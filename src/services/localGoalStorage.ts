@@ -50,10 +50,12 @@ class LocalGoalStorage {
     const board = await this.getBoardByTimeframe(timeframe);
     if (!board) return null;
 
-    // For daily boards, set the target date to the board's current date
-    const targetDate = timeframe === 'daily' && board.currentDate 
-      ? new Date(board.currentDate) 
-      : undefined;
+    // Set target date based on timeframe and board's current date
+    let targetDate: Date | undefined;
+    
+    if (timeframe !== 'lifelong' && board.currentDate) {
+      targetDate = new Date(board.currentDate);
+    }
       
     const newTask: Task = {
       id: uuidv4(),
@@ -62,7 +64,7 @@ class LocalGoalStorage {
       order: board.tasks.length,
       createdDate: new Date(), // Actual creation time
       completedDate: undefined,
-      targetDate: targetDate // The date this task is intended for
+      targetDate: targetDate // The date/period this task is intended for
     };
 
     board.tasks.push(newTask);
@@ -217,25 +219,67 @@ class LocalGoalStorage {
   // New method to get filtered tasks for display
   async getFilteredTasksForDate(timeframe: GoalBoard['timeframe'], date: Date): Promise<Task[]> {
     const board = await this.getBoardByTimeframe(timeframe);
-    if (!board || timeframe !== 'daily') {
-      return board?.tasks || [];
+    if (!board) {
+      return [];
+    }
+
+    // For lifelong, show all tasks
+    if (timeframe === 'lifelong') {
+      return board.tasks;
     }
 
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
 
-    // For daily boards, show only tasks with matching target date
     return board.tasks.filter(task => {
-      if (task.targetDate) {
-        const taskTargetDate = new Date(task.targetDate);
-        taskTargetDate.setHours(0, 0, 0, 0);
-        
-        // 태스크는 targetDate와 정확히 일치하는 날짜에만 표시
-        return taskTargetDate.getTime() === targetDate.getTime();
+      if (!task.targetDate) {
+        // For legacy tasks without targetDate, show them on all dates
+        return true;
       }
-      // For legacy tasks without targetDate, show them on all dates
-      return true;
+
+      const taskTargetDate = new Date(task.targetDate);
+      taskTargetDate.setHours(0, 0, 0, 0);
+
+      switch (timeframe) {
+        case 'daily':
+          // Show tasks with exact date match
+          return taskTargetDate.getTime() === targetDate.getTime();
+
+        case 'weekly':
+          // Show tasks within the same week
+          const targetWeekStart = this.getWeekStart(targetDate);
+          const taskWeekStart = this.getWeekStart(taskTargetDate);
+          return targetWeekStart.getTime() === taskWeekStart.getTime();
+
+        case 'monthly':
+          // Show tasks within the same month and year
+          return taskTargetDate.getMonth() === targetDate.getMonth() &&
+                 taskTargetDate.getFullYear() === targetDate.getFullYear();
+
+        case 'quarterly':
+          // Show tasks within the same quarter and year
+          const targetQuarter = Math.floor(targetDate.getMonth() / 3);
+          const taskQuarter = Math.floor(taskTargetDate.getMonth() / 3);
+          return targetQuarter === taskQuarter &&
+                 taskTargetDate.getFullYear() === targetDate.getFullYear();
+
+        case 'yearly':
+          // Show tasks within the same year
+          return taskTargetDate.getFullYear() === targetDate.getFullYear();
+
+        default:
+          return true;
+      }
     });
+  }
+
+  private getWeekStart(date: Date): Date {
+    const weekStart = new Date(date);
+    const day = weekStart.getDay();
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
   }
 }
 

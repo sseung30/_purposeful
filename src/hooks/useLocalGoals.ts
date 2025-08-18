@@ -18,9 +18,9 @@ export const useLocalGoals = () => {
       // For daily boards, filter tasks by current date
       const boardsWithFilteredTasks = await Promise.all(
         allBoards.map(async board => {
-          if (board.timeframe === 'daily') {
+          if (board.timeframe !== 'lifelong') {
             const currentDate = board.currentDate || new Date();
-            const filteredTasks = await localGoalStorage.getFilteredTasksForDate('daily', currentDate);
+            const filteredTasks = await localGoalStorage.getFilteredTasksForDate(board.timeframe, currentDate);
             return { ...board, tasks: filteredTasks };
           }
           return board;
@@ -103,7 +103,7 @@ export const useLocalGoals = () => {
   const updateBoardDate = async (timeframe: GoalBoardType['timeframe'], newDate: Date) => {
     await localGoalStorage.updateBoardDate(timeframe, newDate);
     
-    // Get filtered tasks for the new date (for daily boards only)
+    // Get filtered tasks for the new date (for all timeframes except lifelong)
     const filteredTasks = await localGoalStorage.getFilteredTasksForDate(timeframe, newDate);
     
     setBoards(prev => prev.map(board => 
@@ -111,7 +111,7 @@ export const useLocalGoals = () => {
         ? { 
             ...board, 
             currentDate: newDate,
-            tasks: timeframe === 'daily' ? filteredTasks : board.tasks,
+            tasks: timeframe === 'lifelong' ? board.tasks : filteredTasks,
             title: board.timeframe === 'daily' ? newDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 
                    board.timeframe === 'lifelong' ? 'Life Goals' :
                    getDateRangeForTimeframe(board.timeframe, newDate)
