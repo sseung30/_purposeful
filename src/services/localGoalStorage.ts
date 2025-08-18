@@ -159,46 +159,46 @@ class LocalGoalStorage {
     await localforage.setItem(this.storageKey, boards);
   }
 
-  // 미완료 태스크를 새로운 날짜로 롤오버하는 함수
-  private async rolloverIncompleteTasks(newDate: Date): Promise<void> {
+  // 실제 시간 기준으로 자동 롤오버 체크 및 실행
+  async checkAndPerformDailyRollover(): Promise<void> {
     const board = await this.getBoardByTimeframe('daily');
     if (!board) return;
 
+    const lastRolloverDate = await localforage.getItem<string>('lastRolloverDate');
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(newDate);
-    targetDate.setHours(0, 0, 0, 0);
+    const todayString = today.toDateString();
 
-    // 오늘에서 내일로 넘어가는 경우에만 롤오버 실행
-    if (targetDate.getTime() === today.getTime() + 24 * 60 * 60 * 1000) {
-      let hasChanges = false;
-      
-      // 오늘의 미완료 태스크를 내일로 이동
-      board.tasks.forEach(task => {
-        if (task.targetDate && !task.completed) {
-          const taskTargetDate = new Date(task.targetDate);
-          taskTargetDate.setHours(0, 0, 0, 0);
-          
-          // 오늘 태스크인 경우 내일로 이동
-          if (taskTargetDate.getTime() === today.getTime()) {
-            task.targetDate = new Date(targetDate);
-            hasChanges = true;
-          }
-        }
-      });
-
-      if (hasChanges) {
-        await this.saveBoard(board);
-      }
+    // 이미 오늘 롤오버를 했다면 스킵
+    if (lastRolloverDate === todayString) {
+      return;
     }
+
+    let hasChanges = false;
+    today.setHours(0, 0, 0, 0);
+
+    // 어제까지의 미완료 태스크를 오늘로 이동
+    board.tasks.forEach(task => {
+      if (task.targetDate && !task.completed) {
+        const taskTargetDate = new Date(task.targetDate);
+        taskTargetDate.setHours(0, 0, 0, 0);
+        
+        // 과거 태스크인 경우 오늘로 이동
+        if (taskTargetDate.getTime() < today.getTime()) {
+          task.targetDate = new Date(today);
+          hasChanges = true;
+        }
+      }
+    });
+
+    if (hasChanges) {
+      await this.saveBoard(board);
+    }
+
+    // 롤오버 완료 기록
+    await localforage.setItem('lastRolloverDate', todayString);
   }
 
   async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
-    // 날짜 변경 시 미완료 태스크 롤오버 처리
-    if (timeframe === 'daily') {
-      await this.rolloverIncompleteTasks(newDate);
-    }
-    
     const board = await this.getBoardByTimeframe(timeframe);
     if (board) {
       board.currentDate = newDate;

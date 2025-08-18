@@ -9,6 +9,9 @@ export const useLocalGoals = () => {
 
   const loadBoards = async () => {
     try {
+      // 앱 로드 시 자동 롤오버 체크
+      await localGoalStorage.checkAndPerformDailyRollover();
+      
       await localGoalStorage.initializeDefaultBoards();
       const allBoards = await localGoalStorage.getAllBoards();
       

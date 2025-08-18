@@ -10,6 +10,26 @@ import { GoalBoard as GoalBoardType } from './types/Goal';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
+// 자동 롤오버를 위한 타이머 설정
+const setupDailyRolloverTimer = (refreshBoards: () => void) => {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0); // 자정
+  
+  const msUntilMidnight = tomorrow.getTime() - now.getTime();
+  
+  // 자정에 롤오버 실행
+  setTimeout(() => {
+    refreshBoards(); // 보드 새로고침으로 롤오버 트리거
+    
+    // 이후 24시간마다 반복
+    setInterval(() => {
+      refreshBoards();
+    }, 24 * 60 * 60 * 1000);
+  }, msUntilMidnight);
+};
+
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [useCloudStorage, setUseCloudStorage] = useState(false);
@@ -19,6 +39,14 @@ function App() {
   
   // Cloud storage hooks
   const cloudGoals = useSupabaseGoals();
+
+  // 자동 롤오버 타이머 설정
+  React.useEffect(() => {
+    const goals = isCloudMode ? cloudGoals : localGoals;
+    if (goals.refreshBoards) {
+      setupDailyRolloverTimer(goals.refreshBoards);
+    }
+  }, [isCloudMode, localGoals.refreshBoards, cloudGoals.refreshBoards]);
 
   return (
     <AuthWrapper>
