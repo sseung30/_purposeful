@@ -5,6 +5,7 @@ export interface Task {
   order: number;
   completedDate?: Date;
   createdDate?: Date;
+  targetDate?: Date; // The date this task is intended for
 }
 
 export interface GoalBoard {

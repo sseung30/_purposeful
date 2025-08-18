@@ -33,7 +33,8 @@ class SupabaseGoalStorage {
           completed: task.completed,
           order: task.order_index,
           createdDate: new Date(task.created_at),
-          completedDate: task.completed_at ? new Date(task.completed_at) : undefined
+          completedDate: task.completed_at ? new Date(task.completed_at) : undefined,
+          targetDate: undefined // We'll need to implement this properly later
         }))
         .sort((a, b) => a.order - b.order),
       createdAt: new Date(board.created_at),
@@ -89,6 +90,12 @@ class SupabaseGoalStorage {
     const board = await this.getBoardByTimeframe(timeframe);
     if (!board) return null;
 
+    // For daily boards, we need to store the target date in the task text or use a custom field
+    // Since we can't modify the database schema, we'll store it in a way that can be parsed
+    const targetDate = timeframe === 'daily' && board.currentDate 
+      ? board.currentDate 
+      : undefined;
+
     const newTask = {
       board_id: board.id,
       text: taskText,
@@ -113,7 +120,8 @@ class SupabaseGoalStorage {
       completed: data.completed,
       order: data.order_index,
       createdDate: new Date(data.created_at),
-      completedDate: undefined
+      completedDate: undefined,
+      targetDate: targetDate
     };
   }
 

@@ -50,17 +50,19 @@ class LocalGoalStorage {
     const board = await this.getBoardByTimeframe(timeframe);
     if (!board) return null;
 
-    // For daily boards, use the board's current date as the creation date
-    const creationDate = timeframe === 'daily' && board.currentDate 
+    // For daily boards, set the target date to the board's current date
+    const targetDate = timeframe === 'daily' && board.currentDate 
       ? new Date(board.currentDate) 
-      : new Date();
+      : undefined;
+      
     const newTask: Task = {
       id: uuidv4(),
       text: taskText,
       completed: false,
       order: board.tasks.length,
-      createdDate: creationDate,
-      completedDate: undefined
+      createdDate: new Date(), // Actual creation time
+      completedDate: undefined,
+      targetDate: targetDate // The date this task is intended for
     };
 
     board.tasks.push(newTask);
@@ -162,12 +164,13 @@ class LocalGoalStorage {
     if (board) {
       // For daily boards, handle task migration
       if (timeframe === 'daily') {
-        // For daily boards, only show tasks that were created on the specific date
+        // For daily boards, only show tasks that have the target date matching the selected date
         board.tasks = board.tasks.filter(task => {
-          if (task.createdDate) {
-            return task.createdDate.toDateString() === newDate.toDateString();
+          if (task.targetDate) {
+            return task.targetDate.toDateString() === newDate.toDateString();
           }
-          return false;
+          // For legacy tasks without targetDate, show them on all dates
+          return true;
         });
       }
       
