@@ -18,7 +18,7 @@ class SupabaseGoalStorage {
 
     if (error) {
       console.error('Error fetching boards:', error);
-                   board.timeframe === 'lifelong' ? 'Life' :
+      return [];
     }
 
  return boardsData.map(board => ({
