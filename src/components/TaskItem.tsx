@@ -70,7 +70,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         onClick={() => onToggleComplete(task.id)}
         className={`flex items-center justify-center w-4 h-4 rounded border-2 transition-all duration-200 ${
           task.completed
-            ? 'bg-green-500 border-green-500 text-white'
+            ? 'bg-blue-500 border-blue-500 text-white'
             : 'border-gray-300 hover:border-blue-500'
         }`}
       >
