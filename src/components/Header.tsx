@@ -42,10 +42,6 @@ export const Header: React.FC<HeaderProps> = ({ user, isCloudMode = false, onTog
             <Calendar className="w-4 h-4" />
             <span>{formattedDate}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-600" />
-            <span>Keep going!</span>
-          </div>
           
           {/* Storage Mode Toggle */}
           {onToggleMode && (
