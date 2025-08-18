@@ -160,6 +160,11 @@ class LocalGoalStorage {
   }
 
   async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
+    // 날짜 변경 시 미완료 태스크 롤오버 처리
+    if (timeframe === 'daily') {
+      await this.rolloverIncompleteTasks(newDate);
+    }
+    
     const board = await this.getBoardByTimeframe(timeframe);
     if (board) {
       board.currentDate = newDate;
@@ -189,7 +194,6 @@ class LocalGoalStorage {
 
     // For daily boards, filter tasks by target date
     return board.tasks.filter(task => {
-      if (task.targetDate) {
         const taskTargetDate = new Date(task.targetDate);
         taskTargetDate.setHours(0, 0, 0, 0);
         
@@ -206,10 +210,13 @@ class LocalGoalStorage {
           // 다른 날짜를 보고 있을 때: 해당 날짜의 태스크만 (미래 날짜 포함)
           return taskTargetDate.getTime() === targetDate.getTime();
         }
-      }
+      } ||
       // For legacy tasks without targetDate, show them on all dates
-      return true;
-    });
+      true);
+  }
+
+  async rolloverIncompleteTasks(newDate: Date): Promise<void> {
+    // Implementation for rolling over incomplete tasks
   }
 }
 
