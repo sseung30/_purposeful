@@ -4,8 +4,11 @@ import { Database } from './database.types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+// Create a mock client when environment variables are missing
+// This allows the app to work in local-only mode
+export const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+  : createClient<Database>('https://placeholder.supabase.co', 'placeholder-key');
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Export a flag to check if Supabase is properly configured
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
