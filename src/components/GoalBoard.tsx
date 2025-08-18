@@ -1,287 +1,157 @@
-import { supabase } from '../lib/supabase';
-import { GoalBoard, Task } from '../types/Goal';
-import { getDateRangeForTimeframe } from '../utils/dateHelpers';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { GoalBoard as GoalBoardType, Task } from '../types/Goal';
+import { TaskItem } from './TaskItem';
 
-class SupabaseGoalStorage {
-  async getAllBoards(): Promise<GoalBoard[]> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return [];
-
-    const { data: boardsData, error } = await supabase
-      .from('goal_boards')
-      .select(`
-        *,
-        tasks (*)
-      `)
-      .eq('user_id', user.user.id)
-      .order('timeframe');
-
-    if (error) {
-      console.error('Error fetching boards:', error);
-      return [];
-    }
-
- return boardsData.map(board => ({
-      id: board.id,
-      timeframe: board.timeframe as GoalBoard['timeframe'],
-      title: board.title,
-      currentDate: new Date(), // This will be updated by the title calculation
-      tasks: (board.tasks || [])
-        .map(task => ({
-          id: task.id,
-          text: task.text,
-          completed: task.completed,
-          order: task.order_index,
-          createdDate: new Date(task.created_at),
-          completedDate: task.completed_at ? new Date(task.completed_at) : undefined // 이 줄을 수정/추가하세요
-        }))
-        .sort((a, b) => a.order - b.order),
-      createdAt: new Date(board.created_at),
-      updatedAt: new Date(board.updated_at)
-    }));
-  }
-
-  async getBoardByTimeframe(timeframe: GoalBoard['timeframe']): Promise<GoalBoard | null> {
-    const boards = await this.getAllBoards();
-    return boards.find(board => board.timeframe === timeframe) || null;
-  }
-
-  async saveBoard(board: GoalBoard): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const { error } = await supabase
-      .from('goal_boards')
-      .upsert({
-        id: board.id,
-        user_id: user.user.id,
-        timeframe: board.timeframe,
-        title: board.title,
-        updated_at: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error('Error saving board:', error);
-    }
-  }
-
-  async updateBoardTasks(timeframe: GoalBoard['timeframe'], tasks: Task[]): Promise<void> {
-    const board = await this.getBoardByTimeframe(timeframe);
-    if (!board) return;
-
-    // Update all task orders in a single transaction
-    const updates = tasks.map((task, index) => ({
-      id: task.id,
-      order_index: index,
-      updated_at: new Date().toISOString()
-    }));
-
-    const { error } = await supabase
-      .from('tasks')
-      .upsert(updates);
-
-    if (error) {
-      console.error('Error updating task order:', error);
-    }
-  }
-
-  async addTaskToBoard(timeframe: GoalBoard['timeframe'], taskText: string): Promise<Task | null> {
-    const board = await this.getBoardByTimeframe(timeframe);
-    if (!board) return null;
-
-    const newTask = {
-      board_id: board.id,
-      text: taskText,
-      completed: false,
-      order_index: board.tasks.length
-    };
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert(newTask)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding task:', error);
-      return null;
-    }
-
-    return {
-      id: data.id,
-      text: data.text,
-      completed: data.completed,
-      order: data.order_index,
-      createdDate: new Date(data.created_at),
-      completedDate: undefined
-    };
-  }
-
-async toggleTaskCompletion(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
-    const { data: currentTask } = await supabase
-      .from('tasks')
-      .select('completed')
-      .eq('id', taskId)
-      .single();
-
-    if (currentTask) {
-      const isNowCompleted = !currentTask.completed;
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          completed: isNowCompleted,
-          completed_at: isNowCompleted ? new Date().toISOString() : null, // 이 로직을 수정/추가하세요
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error toggling task completion:', error);
-      }
-    }
-  }
-
-  async deleteTask(timeframe: GoalBoard['timeframe'], taskId: string): Promise<void> {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error deleting task:', error);
-    }
-  }
-
-  async updateTaskText(timeframe: GoalBoard['timeframe'], taskId: string, newText: string): Promise<void> {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ 
-        text: newText,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error updating task text:', error);
-    }
-  }
-
-  async initializeDefaultBoards(): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const timeframes: GoalBoard['timeframe'][] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'lifelong'];
-    
-    // Update existing board titles first
-    await this.updateExistingBoardTitles();
-    
-    for (const timeframe of timeframes) {
-      const existing = await this.getBoardByTimeframe(timeframe);
-      if (!existing) {
-        const board: Omit<GoalBoard, 'tasks'> = {
-          id: crypto.randomUUID(),
-          timeframe,
-          title: this.getTitleForTimeframe(timeframe),
-          currentDate: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-
-        const { error } = await supabase
-          .from('goal_boards')
-          .insert({
-            id: board.id,
-            user_id: user.user.id,
-            timeframe: board.timeframe,
-            title: board.title
-          });
-
-        if (error) {
-          console.error('Error creating board:', error);
-        }
-      }
-    }
-  }
-
-  async updateBoardDate(timeframe: GoalBoard['timeframe'], newDate: Date): Promise<void> {
-    // For daily boards, handle task migration
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    const targetDate = new Date(newDate);
-    targetDate.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
-    let newTitle: string;
-    if (timeframe === 'daily') {
-      newTitle = newDate.toLocaleDateString('en-US', { 
-        day: 'numeric',
-        month: 'short'
-      });
-    } else {
-      newTitle = this.getTitleForTimeframe(timeframe, newDate);
-    }
-    
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const { error } = await supabase
-      .from('goal_boards')
-      .update({ 
-        title: newTitle,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.user.id)
-      .eq('timeframe', timeframe);
-
-    if (error) {
-      console.error('Error updating board date:', error);
-    }
-  }
-
-  async updateExistingBoardTitles(): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const timeframes: GoalBoard['timeframe'][] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'lifelong'];
-    
-    for (const timeframe of timeframes) {
-      const newTitle = this.getTitleForTimeframe(timeframe);
-      
-      const { error } = await supabase
-        .from('goal_boards')
-        .update({ 
-          title: newTitle,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.user.id)
-        .eq('timeframe', timeframe);
-
-      if (error) {
-        console.error('Error updating board title:', error);
-      }
-    }
-  }
-
-  private getTitleForTimeframe(timeframe: GoalBoard['timeframe'], date?: Date): string {
-    switch (timeframe) {
-      case 'daily':
-        const targetDate = date || new Date();
-        return targetDate.toLocaleDateString('en-US', { 
-          day: 'numeric',
-          month: 'short'
-        });
-      case 'weekly':
-        return getDateRangeForTimeframe('weekly', date);
-      case 'monthly':
-        return getDateRangeForTimeframe('monthly', date);
-      case 'quarterly':
-        return getDateRangeForTimeframe('quarterly', date);
-      case 'yearly':
-        return getDateRangeForTimeframe('yearly', date);
-      case 'lifelong':
-        return 'Life';
-      default:
-        return '';
-    }
-  }
+interface GoalBoardProps {
+  board: GoalBoardType;
+  onUpdateTaskOrder: (tasks: Task[]) => void;
+  onToggleTaskCompletion: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
+  onUpdateTaskText: (taskId: string, newText: string) => void;
+  onAddTask: (taskText: string) => void;
+  onDateChange: (newDate: Date) => void;
+  className?: string;
 }
 
-export const supabaseGoalStorage = new SupabaseGoalStorage();
+export const GoalBoard: React.FC<GoalBoardProps> = ({
+  board,
+  onUpdateTaskOrder,
+  onToggleTaskCompletion,
+  onDeleteTask,
+  onUpdateTaskText,
+  onAddTask,
+  onDateChange,
+  className = ''
+}) => {
+  const [newTaskText, setNewTaskText] = useState('');
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
+
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newTaskText.trim()) {
+      onAddTask(newTaskText.trim());
+      setNewTaskText('');
+    }
+  };
+
+  const handleDragStart = (task: Task) => {
+    setDraggedTask(task);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetTask: Task) => {
+    e.preventDefault();
+    if (!draggedTask || draggedTask.id === targetTask.id) return;
+
+    const tasks = [...board.tasks];
+    const draggedIndex = tasks.findIndex(t => t.id === draggedTask.id);
+    const targetIndex = tasks.findIndex(t => t.id === targetTask.id);
+
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      tasks.splice(draggedIndex, 1);
+      tasks.splice(targetIndex, 0, draggedTask);
+      onUpdateTaskOrder(tasks);
+    }
+    setDraggedTask(null);
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const currentDate = board.currentDate || new Date();
+    let newDate = new Date(currentDate);
+
+    switch (board.timeframe) {
+      case 'daily':
+        newDate.setDate(currentDate.getDate() + (direction === 'next' ? 1 : -1));
+        break;
+      case 'weekly':
+        newDate.setDate(currentDate.getDate() + (direction === 'next' ? 7 : -7));
+        break;
+      case 'monthly':
+        newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
+        break;
+      case 'quarterly':
+        newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 3 : -3));
+        break;
+      case 'yearly':
+        newDate.setFullYear(currentDate.getFullYear() + (direction === 'next' ? 1 : -1));
+        break;
+      default:
+        return;
+    }
+
+    onDateChange(newDate);
+  };
+
+  const canNavigate = board.timeframe !== 'lifelong';
+
+  return (
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col ${className}`}>
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {canNavigate && (
+            <button
+              onClick={() => navigateDate('prev')}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+          )}
+          <h2 className="text-lg font-semibold text-gray-800">
+            {board.title}
+          </h2>
+          {canNavigate && (
+            <button
+              onClick={() => navigateDate('next')}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Task List */}
+      <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+        {board.tasks.map((task) => (
+          <div
+            key={task.id}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, task)}
+          >
+            <TaskItem
+              task={task}
+              onToggleCompletion={() => onToggleTaskCompletion(task.id)}
+              onDelete={() => onDeleteTask(task.id)}
+              onUpdateText={(newText) => onUpdateTaskText(task.id, newText)}
+              onDragStart={() => handleDragStart(task)}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Add Task Form */}
+      <div className="p-4 border-t border-gray-200">
+        <form onSubmit={handleAddTask} className="flex gap-2">
+          <input
+            type="text"
+            value={newTaskText}
+            onChange={(e) => setNewTaskText(e.target.value)}
+            placeholder="Add a new task..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
