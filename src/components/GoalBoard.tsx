@@ -137,29 +137,6 @@ export const GoalBoard: React.FC<GoalBoardProps> = ({
             )}
           </div>
         </div>
-            <div className="flex items-center gap-2 flex-1">
-              <button
-                onClick={handlePreviousDate}
-                className="p-1 hover:bg-gray-100 rounded-md transition-colors duration-200 text-gray-500 hover:text-gray-700"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <h2 className={`text-lg font-semibold flex-1 text-center ${
-                isToday() ? 'text-blue-600' : 'text-gray-900'
-              }`}>
-                {board.title}
-              </h2>
-              
-              <button
-                onClick={handleNextDate}
-                className="p-1 hover:bg-gray-100 rounded-md transition-colors duration-200 text-gray-500 hover:text-gray-700"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-        </div>
       </div>
       <div className="p-4 min-h-[300px] max-h-[500px] overflow-y-auto">
         <DndContext
