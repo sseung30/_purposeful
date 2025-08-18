@@ -126,17 +126,10 @@ class LocalGoalStorage {
     switch (timeframe) {
       case 'daily':
         const targetDate = date || new Date();
-        const today = new Date();
-        const isToday = targetDate.toDateString() === today.toDateString();
-        
-        if (isToday) {
-          return 'Today';
-        } else {
-          return targetDate.toLocaleDateString('en-US', { 
-            day: 'numeric',
-            month: 'short'
-          });
-        }
+        return targetDate.toLocaleDateString('en-US', { 
+          day: 'numeric',
+          month: 'short'
+        });
       case 'weekly':
         return getDateRangeForTimeframe('weekly', date);
       case 'monthly':
@@ -198,9 +191,7 @@ class LocalGoalStorage {
       
       board.currentDate = newDate;
       if (timeframe === 'daily') {
-        const today = new Date();
-        const isToday = newDate.toDateString() === today.toDateString();
-        board.title = isToday ? 'Today' : newDate.toLocaleDateString('en-US', { 
+        board.title = newDate.toLocaleDateString('en-US', { 
           day: 'numeric',
           month: 'short'
         });
