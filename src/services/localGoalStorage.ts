@@ -51,7 +51,6 @@ class LocalGoalStorage {
     return getDateRangeForTimeframe(timeframe, date);
   }
 
-
   async addTaskToBoard(timeframe: GoalBoard['timeframe'], taskText: string): Promise<Task | null> {
     const boards = await this.getAllBoards();
     const boardIndex = boards.findIndex(b => b.timeframe === timeframe);
