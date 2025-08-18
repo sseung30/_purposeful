@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ user, isCloudMode = false, onTog
               <Target className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Goal Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Purposeful</h1>
               <p className="text-sm text-gray-600">Track your progress across all timeframes</p>
             </div>
           </div>
