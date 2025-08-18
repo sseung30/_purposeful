@@ -50,12 +50,16 @@ class LocalGoalStorage {
     const board = await this.getBoardByTimeframe(timeframe);
     if (!board) return null;
 
+    // For daily boards, use the board's current date as the creation date
+    const creationDate = timeframe === 'daily' && board.currentDate 
+      ? new Date(board.currentDate) 
+      : new Date();
     const newTask: Task = {
       id: uuidv4(),
       text: taskText,
       completed: false,
       order: board.tasks.length,
-      createdDate: new Date(),
+      createdDate: creationDate,
       completedDate: undefined
     };
 
@@ -158,35 +162,13 @@ class LocalGoalStorage {
     if (board) {
       // For daily boards, handle task migration
       if (timeframe === 'daily') {
-        const today = new Date();
-        const isMovingToToday = newDate.toDateString() === today.toDateString();
-        
-        // Filter tasks based on the target date
-        if (isMovingToToday) {
-          // When viewing "today", show all incomplete tasks regardless of when they were created
-          // and only show completed tasks that were completed today
-          board.tasks = board.tasks.filter(task => {
-            if (!task.completed) {
-              return true; // Show all incomplete tasks
-            }
-            // For completed tasks, only show if completed today
-            return task.completedDate && 
-                   task.completedDate.toDateString() === today.toDateString();
-          });
-        } else {
-          // When viewing a specific past/future date, show:
-          // 1. Tasks completed on that specific date
-          // 2. Incomplete tasks that were created on or before that date
-          board.tasks = board.tasks.filter(task => {
-            if (task.completed && task.completedDate) {
-              return task.completedDate.toDateString() === newDate.toDateString();
-            }
-            if (!task.completed && task.createdDate) {
-              return task.createdDate <= newDate;
-            }
-            return false;
-          });
-        }
+        // For daily boards, only show tasks that were created on the specific date
+        board.tasks = board.tasks.filter(task => {
+          if (task.createdDate) {
+            return task.createdDate.toDateString() === newDate.toDateString();
+          }
+          return false;
+        });
       }
       
       board.currentDate = newDate;
