@@ -91,7 +91,7 @@ export const useLocalGoals = () => {
         ? { 
             ...board, 
             currentDate: newDate,
-            title: board.timeframe === 'daily' ? 'Today' : 
+            title: board.timeframe === 'daily' ? newDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : 
                    board.timeframe === 'lifelong' ? 'Life Goals' :
                    getDateRangeForTimeframe(board.timeframe, newDate)
           }
